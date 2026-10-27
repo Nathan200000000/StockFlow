@@ -4,7 +4,7 @@ StockFlow is a returns-center inventory and order management system built with P
 
 ## Current status
 
-This is the first learning milestone: a small FastAPI service with a health check and read-only sample return endpoints. Data is currently stored in memory and resets when the server restarts. PostgreSQL persistence, inventory updates, order reservations, and audit logs are planned next.
+The first milestone includes a FastAPI service for recording returned items, recording inspection/disposition decisions, viewing sellable inventory, and reading audit logs. Data is currently stored in memory and resets when the server restarts. PostgreSQL persistence, order reservations, and transaction-safe concurrent updates are planned next.
 
 ## Run locally
 

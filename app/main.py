@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 app = FastAPI(
@@ -76,6 +78,12 @@ def record_audit_event(return_id: int, event_type: str, details: str) -> None:
 def read_root() -> dict[str, str]:
     """Confirm the API is running."""
     return {"message": "Welcome to StockFlow API", "docs": "/docs"}
+
+
+@app.get("/dashboard", include_in_schema=False)
+def dashboard() -> FileResponse:
+    """Serve the StockFlow operations dashboard."""
+    return FileResponse(Path(__file__).parent / "static" / "dashboard.html")
 
 
 @app.get("/health")

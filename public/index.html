@@ -1,0 +1,1197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#050914">
+<title>StockFlow – IND8, Home of the Thunder</title>
+<style>
+:root{
+  color-scheme:dark;
+  --ink:#f3f6ff;--ink-2:#93a0c4;--ink-3:#6c789c;
+  --bg:#050914;--line:rgba(110,145,255,.2);--hair:rgba(110,145,255,.12);
+  --blue:#2f7bff;--blue-hover:#4b8dff;--link:#5ea4ff;
+  --green:#34d27b;--amber:#ffb340;--rose:#ff5a6e;--yellow:#ffd60a;
+  --panel:linear-gradient(180deg,rgba(22,36,82,.6) 0%,rgba(10,17,42,.72) 100%);
+  --panel-border:rgba(92,140,255,.22);
+  --panel-glow:inset 0 1px 0 rgba(255,255,255,.06),0 30px 70px -34px rgba(25,80,255,.5);
+  --surface:#0c1530;
+  --s1:#3d8bff;--s5:#e85a73;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --side:256px;
+}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);font:15px/1.47 var(--font);letter-spacing:-.016em;-webkit-font-smoothing:antialiased;
+  background:radial-gradient(1100px 700px at 90% 10%,rgba(30,70,200,.18),transparent 60%),radial-gradient(900px 600px at 20% 90%,rgba(70,40,200,.12),transparent 60%),var(--bg);background-attachment:fixed;min-height:100vh}
+button{font:inherit;letter-spacing:inherit;color:inherit;cursor:pointer}
+a{color:var(--link);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:8px}
+h1,h2,h3,p{margin:0}
+
+/* ---------- layout ---------- */
+.app{display:grid;grid-template-columns:var(--side) minmax(0,1fr);min-height:100vh}
+.main{min-width:0;padding:40px clamp(20px,4vw,56px) 64px}
+.view{max-width:1200px;margin:0 auto}
+.view[hidden]{display:none}
+.view.enter{animation:viewIn .5s cubic-bezier(.16,1,.3,1)}
+@keyframes viewIn{from{opacity:0;transform:translateY(14px)}}
+
+/* ---------- sidebar ---------- */
+.sidebar{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:22px;padding:26px 16px 18px;
+  background:linear-gradient(180deg,rgba(10,16,40,.92),rgba(5,9,24,.95));border-right:1px solid rgba(92,140,255,.18);
+  box-shadow:1px 0 0 rgba(61,139,255,.25),12px 0 40px -20px rgba(47,123,255,.45);z-index:30}
+.brand{display:flex;align-items:center;gap:10px;padding:0 10px;font-weight:700;font-size:20px;letter-spacing:-.03em;color:var(--ink)}
+.brand:hover{text-decoration:none}
+.brand svg{width:26px;height:26px}
+.site{margin-left:auto;font-size:11px;font-weight:700;letter-spacing:.02em;color:#000;background:var(--yellow);border-radius:6px;padding:2px 7px}
+.nav{display:grid;gap:4px;margin-top:8px}
+.nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;color:#c3cbe6;font-size:15px;transition:background .2s,color .2s}
+.nav a:hover{background:rgba(255,255,255,.05);color:#fff;text-decoration:none}
+.nav a svg{width:19px;height:19px;flex:none;opacity:.9}
+.nav a[aria-current="page"]{background:linear-gradient(90deg,#2f7bff,#2160dc);color:#fff;box-shadow:0 8px 22px -8px rgba(47,123,255,.9),inset 0 1px 0 rgba(255,255,255,.18)}
+.nav .count{margin-left:auto;min-width:22px;height:20px;padding:0 6px;border-radius:10px;font-size:11px;font-weight:600;display:grid;place-items:center;background:rgba(61,139,255,.18);color:#bcd5ff;font-variant-numeric:tabular-nums}
+.nav a[aria-current="page"] .count{background:rgba(255,255,255,.22);color:#fff}
+.nav .count:empty{display:none}
+.nav-sep{height:1px;background:var(--hair);margin:8px 10px}
+.user-card{margin-top:auto;display:grid;grid-template-columns:40px minmax(0,1fr);gap:10px;align-items:center;padding:12px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid var(--hair)}
+.avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;background:linear-gradient(160deg,#3d8bff,#6b4dff);color:#fff;position:relative}
+.avatar b{position:absolute;right:-4px;bottom:-4px;min-width:18px;height:18px;border-radius:9px;background:var(--yellow);color:#000;font-size:10px;display:grid;place-items:center;border:2px solid #0a1028}
+.user-card strong{display:block;font-size:14px;font-weight:600}
+.user-card span{display:block;font-size:12px;color:var(--ink-2)}
+.mini-xp{grid-column:1/-1;height:4px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden}
+.mini-xp i{display:block;height:100%;background:linear-gradient(90deg,#ff9f0a,#ffd60a);transition:width 1s cubic-bezier(.16,1,.3,1)}
+
+.mobilebar{display:none}
+.scrim{display:none}
+
+/* ---------- shared pieces ---------- */
+.view-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:32px}
+.view-head h1{font-size:clamp(40px,5vw,56px);line-height:1.05;font-weight:700;letter-spacing:-.025em}
+.view-head p{font-size:19px;line-height:1.4;color:var(--ink-2);margin-top:10px;max-width:52ch}
+.actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:980px;background:var(--blue);color:#fff;padding:10px 20px;font-size:15px;min-height:40px;transition:background .2s,transform .1s;box-shadow:0 8px 22px -10px rgba(47,123,255,.9);white-space:nowrap}
+.btn:hover{background:var(--blue-hover);text-decoration:none}
+.btn:active{transform:scale(.97)}
+.btn.sm{font-size:13px;padding:6px 14px;min-height:32px}
+.btn.ghost{background:rgba(255,255,255,.04);color:#cfe0ff;box-shadow:inset 0 0 0 1px rgba(120,160,255,.35)}
+.btn.ghost:hover{background:rgba(61,139,255,.16)}
+.btn.yellow{background:var(--yellow);color:#1a1400;box-shadow:0 8px 22px -10px rgba(255,214,10,.8)}
+.btn.yellow:hover{background:#ffe14d}
+.btn.rose{background:rgba(232,90,115,.16);color:#ffb3c0;box-shadow:inset 0 0 0 1px rgba(232,90,115,.5)}
+.btn.rose:hover{background:rgba(232,90,115,.3)}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.more{font-size:15px}
+.more::after{content:" ›";font-size:1.15em}
+
+.panel{background:var(--panel);border:1px solid var(--panel-border);box-shadow:var(--panel-glow);border-radius:24px;padding:24px;min-width:0;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.panel h2{font-size:21px;line-height:1.2;font-weight:600;letter-spacing:-.01em}
+.panel .sub{font-size:13px;color:var(--ink-2);margin-top:3px}
+.grid{display:grid;gap:20px;align-items:start}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g-main{grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr)}
+.stack{display:grid;gap:20px;align-content:start}
+.mt{margin-top:20px}
+.empty{display:grid;place-items:center;text-align:center;color:var(--ink-2);font-size:14px;padding:28px 16px;border:1px dashed var(--hair);border-radius:16px}
+.empty a{display:inline-block;margin-top:6px}
+.muted{color:var(--ink-2)}
+.mono{font-variant-numeric:tabular-nums;letter-spacing:0}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.chip.clean{background:rgba(52,210,123,.12);color:#7ff0b0}
+.chip.damaged{background:rgba(232,90,115,.14);color:#ff9fb0}
+.chip.transit{background:rgba(61,139,255,.14);color:#a9caff}
+.chip.atdoor{background:rgba(255,179,64,.14);color:#ffd08a}
+.chip.done{background:rgba(255,255,255,.06);color:var(--ink-2)}
+.chip.live::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(52,210,123,.6);animation:live 2s infinite}
+@keyframes live{70%{box-shadow:0 0 0 7px rgba(52,210,123,0)}100%{box-shadow:0 0 0 0 rgba(52,210,123,0)}}
+
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:12px;font-weight:500;color:var(--ink-3);text-align:left;padding:0 10px 10px;border-bottom:1px solid var(--hair)}
+td{padding:13px 10px;border-bottom:1px solid var(--hair);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.table-wrap{overflow-x:auto}
+.id{font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:0}
+
+.list{list-style:none;margin:0;padding:0}
+.row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-top:1px solid var(--hair)}
+.row:first-child{border-top:0;padding-top:0}
+.row .grow{min-width:0;flex:1}
+.row .title{font-weight:600}
+.row .meta{font-size:13px;color:var(--ink-2)}
+
+.ranked{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.ranked .r-top{display:flex;justify-content:space-between;gap:10px;font-size:14px}
+.ranked .r-top span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ranked .r-top b{font-weight:600;font-variant-numeric:tabular-nums}
+.ranked .r-bar{height:8px;border-radius:4px;background:rgba(255,255,255,.06);margin-top:6px;overflow:hidden}
+.ranked .r-bar i{display:block;height:100%;border-radius:4px;transition:width .9s cubic-bezier(.16,1,.3,1)}
+
+.meter{height:8px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden}
+.meter i{display:block;height:100%;border-radius:4px;transition:width .8s cubic-bezier(.16,1,.3,1)}
+
+.seg{display:inline-flex;padding:4px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--hair);margin-bottom:22px}
+.seg button{border:0;background:transparent;color:var(--ink-2);padding:8px 18px;border-radius:9px;font-size:14px}
+.seg button[aria-selected="true"]{background:var(--blue);color:#fff;box-shadow:0 6px 16px -8px rgba(47,123,255,.9)}
+
+/* ---------- KPI cards ---------- */
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;margin-top:20px}
+.kpi{display:grid;grid-template-columns:1fr auto;grid-template-areas:"label label" "num num" "delta spark";align-items:end;padding:18px 18px 14px;border-radius:20px;background:var(--panel);border:1px solid var(--panel-border);box-shadow:var(--panel-glow);min-width:0;color:var(--ink);transition:border-color .2s,transform .2s}
+a.kpi:hover{text-decoration:none;border-color:rgba(120,165,255,.5);transform:translateY(-2px)}
+.kpi.plain{grid-template-columns:1fr;grid-template-areas:"label" "num"}
+.kpi .label{grid-area:label;font-size:13px;color:var(--ink-2)}
+.kpi .num{grid-area:num;font-size:36px;font-weight:600;line-height:1.1;margin:6px 0 8px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.kpi .delta{grid-area:delta;font-size:12px;color:var(--ink-2);white-space:nowrap}
+.kpi .delta b{color:var(--green);font-weight:600}
+.kpi .delta b.down{color:#a9caff}
+.kpi .delta b.flat{color:var(--ink-2)}
+.spark{grid-area:spark;width:72px;height:30px;overflow:visible}
+
+/* ---------- dashboard ---------- */
+.welcome{position:relative;overflow:hidden;border-radius:28px;padding:56px 48px 40px;text-align:center;border:1px solid var(--panel-border);box-shadow:var(--panel-glow);
+  background:radial-gradient(120% 90% at 50% 0%,#1a3478 0%,#0b1636 50%,#060b1e 100%)}
+.welcome > *{position:relative;z-index:1}
+.welcome canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.welcome .flash{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:0;background:radial-gradient(70% 70% at var(--fx,50%) 0%,rgba(190,210,255,.5),rgba(120,140,255,.1) 45%,transparent 75%)}
+.welcome .flash.on{animation:flash .9s ease-out}
+@keyframes flash{0%{opacity:0}6%{opacity:1}14%{opacity:.15}22%{opacity:.85}100%{opacity:0}}
+.welcome h1{font-size:clamp(44px,7vw,84px);line-height:1;font-weight:700;letter-spacing:-.03em}
+.welcome h1 span{display:block}
+.welcome h1 .l2{font-size:.6em;margin-top:.14em;background:linear-gradient(100deg,#fff 0%,#ffe680 35%,#ffd60a 55%,#fff6cc 100%);-webkit-background-clip:text;background-clip:text;color:transparent;transition:filter .3s}
+.welcome.striking h1 .l2{filter:drop-shadow(0 0 26px rgba(255,214,10,.55))}
+.welcome .lede{font-size:clamp(17px,2vw,21px);color:#a9b5d6;margin:18px auto 0;max-width:42ch}
+.welcome .actions{justify-content:center;margin-top:26px;gap:26px}
+.hud{max-width:560px;margin:34px auto 0;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;align-items:center;text-align:left;padding:14px 18px;border-radius:18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.lvl-badge{width:50px;height:50px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(160deg,#ffd60a,#ff9f0a);color:#000;position:relative;box-shadow:0 0 26px rgba(255,214,10,.25)}
+.lvl-badge svg{width:26px;height:26px}
+.lvl-badge b{position:absolute;right:-7px;bottom:-7px;min-width:24px;height:24px;padding:0 5px;border-radius:12px;background:#f5f5f7;color:#000;font-size:13px;display:grid;place-items:center;border:2px solid #0a1330}
+.hud-name{font-size:17px;font-weight:600}
+.hud-name span{color:var(--ink-2);font-weight:400}
+.xp-bar{height:7px;border-radius:4px;background:rgba(255,255,255,.12);overflow:hidden;margin:8px 0 5px}
+.xp-bar i{display:block;height:100%;width:0;border-radius:4px;background:linear-gradient(90deg,#ff9f0a,#ffd60a);transition:width 1.2s cubic-bezier(.16,1,.3,1);box-shadow:0 0 12px rgba(255,214,10,.6)}
+.xp-caption{font-size:12px;color:var(--ink-2)}
+.hud-xp{text-align:right}
+.hud-xp div{font-size:26px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;color:var(--yellow)}
+.hud-xp span{font-size:12px;color:var(--ink-2)}
+
+.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) minmax(0,1fr);gap:14px;align-items:stretch}
+.stage{position:relative;display:flex;flex-direction:column;gap:4px;padding:18px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid var(--hair);color:var(--ink);transition:border-color .2s,background .2s}
+.stage:hover{text-decoration:none;border-color:rgba(120,165,255,.5);background:rgba(61,139,255,.08)}
+.stage .s-name{font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:8px}
+.stage .s-name svg{width:16px;height:16px}
+.stage .s-num{font-size:30px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.stage .s-meta{font-size:12px;color:var(--ink-2)}
+.stage .s-go{margin-top:auto;padding-top:10px;font-size:13px;color:var(--link)}
+.stage .s-go::after{content:" ›"}
+.stage:not(:last-child)::after{content:"";position:absolute;right:-12px;top:50%;width:10px;height:10px;border-top:2px solid rgba(120,160,255,.45);border-right:2px solid rgba(120,160,255,.45);transform:translateY(-50%) rotate(45deg);z-index:1}
+.stage.split{gap:10px}
+.stage.split .half{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.stage.split .half b{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);list-style:none;margin:0;padding:0}
+.legend li{display:flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.chart{width:100%;display:block;overflow:visible}
+.chart text{font-family:var(--font);font-size:11px;fill:var(--ink-3);letter-spacing:0}
+.chart .grid-l line{stroke:rgba(140,165,230,.12)}
+.chart .end-label{fill:var(--ink);font-size:12px;font-weight:600}
+
+.feed{list-style:none;margin:0;padding:0}
+.feed li{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:12px;align-items:start;padding:12px 0;border-top:1px solid var(--hair)}
+.feed li:first-child{border-top:0;padding-top:0}
+.feed .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center}
+.feed .ic svg{width:17px;height:17px}
+.feed .msg{font-size:14px;line-height:1.4}
+.feed .when{font-size:12px;color:var(--ink-3);margin-top:2px}
+.feed .xp{font-size:12px;font-weight:600;color:var(--yellow);white-space:nowrap;font-variant-numeric:tabular-nums}
+.feed li.fresh{animation:fresh 1.4s cubic-bezier(.16,1,.3,1)}
+@keyframes fresh{from{opacity:0;transform:translateY(-8px);background:rgba(61,139,255,.12)}}
+.ic.unload{background:rgba(61,139,255,.15);color:#8cbcff}
+.ic.process{background:rgba(52,210,123,.13);color:#7ff0b0}
+.ic.tranship{background:rgba(255,214,10,.13);color:#ffe066}
+.ic.liquidation{background:rgba(232,90,115,.15);color:#ff9fb0}
+.ic.shift{background:rgba(155,123,255,.15);color:#c3b0ff}
+
+/* ---------- unload ---------- */
+.doors{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.door{border-radius:20px;padding:18px;min-height:190px;display:flex;flex-direction:column;gap:6px;background:rgba(255,255,255,.03);border:1px dashed rgba(120,160,255,.25)}
+.door.busy{background:var(--panel);border:1px solid rgba(255,179,64,.45);box-shadow:var(--panel-glow),0 0 30px -12px rgba(255,179,64,.45)}
+.door .d-top{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--ink-2)}
+.door .truck-ic{width:46px;height:30px;margin:8px 0 2px;color:#ffd08a}
+.door .d-id{font-size:19px;font-weight:600}
+.door .btn{margin-top:auto}
+.door .d-empty{margin:auto 0;color:var(--ink-3);font-size:13px}
+.station-pick{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.station-pick span{font-size:12px;color:var(--ink-3);margin-right:2px}
+.station-pick button{width:32px;height:32px;border-radius:9px;border:1px solid rgba(120,160,255,.35);background:rgba(255,255,255,.03);color:#cfe0ff;font-size:13px;font-weight:600}
+.station-pick button:hover{background:var(--blue);border-color:var(--blue);color:#fff}
+
+/* ---------- process ---------- */
+.stations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.station{border-radius:20px;padding:18px;background:rgba(255,255,255,.03);border:1px solid var(--hair);display:flex;flex-direction:column;gap:12px;min-width:0}
+.station.active{background:var(--panel);border-color:rgba(52,210,123,.4);box-shadow:var(--panel-glow),0 0 30px -14px rgba(52,210,123,.5)}
+.st-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.st-head h3{font-size:17px;font-weight:600}
+.st-box{font-size:13px;color:var(--ink-2)}
+.items{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.item{display:grid;gap:8px;padding:12px;border-radius:14px;background:rgba(5,10,28,.55);border:1px solid var(--hair)}
+.item .i-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.item .i-name{font-weight:600;font-size:14px}
+.item .i-note{font-size:12px;color:var(--ink-2)}
+.item .i-acts{display:flex;gap:8px}
+.item .i-acts .btn{flex:1}
+.item.routed{opacity:.55}
+.item.routed .i-acts{display:none}
+.progress-line{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-2)}
+
+.tote-vis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:14px;border-radius:16px;background:linear-gradient(180deg,rgba(255,214,10,.12),rgba(255,214,10,.04));border:2px solid rgba(255,214,10,.55);margin:6px 0 14px}
+.tote-vis i{height:34px;border-radius:8px;background:rgba(255,214,10,.08);border:1px dashed rgba(255,214,10,.3)}
+.tote-vis i.on{background:linear-gradient(160deg,#ffe14d,#ffb800);border:0;box-shadow:0 0 14px rgba(255,214,10,.45)}
+.tote-vis i.pop{animation:pop .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{transform:scale(.4)}}
+.big{font-size:40px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+
+/* ---------- tranship ---------- */
+.totes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.tote-card{padding:14px;border-radius:16px;background:linear-gradient(180deg,rgba(255,214,10,.14),rgba(255,214,10,.04));border:1px solid rgba(255,214,10,.45);display:grid;gap:8px}
+.tote-card .t-id{font-weight:700;color:#ffe066;font-variant-numeric:tabular-nums}
+.tote-card .t-meta{font-size:12px;color:var(--ink-2)}
+.trailer{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:12px;border-radius:14px;border:2px solid rgba(140,170,255,.4);background:rgba(5,10,28,.5);margin:14px 0}
+.trailer i{aspect-ratio:1.3;border-radius:6px;background:rgba(255,255,255,.04);border:1px dashed rgba(140,170,255,.25)}
+.trailer i.on{background:linear-gradient(160deg,#ffe14d,#ffb800);border:0;box-shadow:0 0 12px rgba(255,214,10,.4)}
+.truck-wrap{display:flex;align-items:flex-end;gap:6px}
+.truck-wrap .trailer{flex:1;margin:0}
+.cab{width:54px;height:62px;border-radius:12px 18px 8px 8px;background:linear-gradient(160deg,#3d8bff,#2152c9);position:relative;box-shadow:0 0 20px -6px rgba(61,139,255,.8)}
+.cab::after{content:"";position:absolute;left:10px;right:10px;top:10px;height:18px;border-radius:5px 9px 3px 3px;background:rgba(200,225,255,.55)}
+.ship-anim{animation:drive 1.2s cubic-bezier(.6,0,.4,1)}
+@keyframes drive{0%{transform:none}35%{transform:translateX(-10px)}100%{transform:translateX(140%);opacity:0}}
+
+/* ---------- activity ---------- */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.filters button{border:1px solid var(--hair);background:rgba(255,255,255,.03);color:var(--ink-2);padding:7px 14px;border-radius:999px;font-size:13px}
+.filters button[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:#fff}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:20px}
+.stat{padding:16px 18px;border-radius:18px;background:var(--panel);border:1px solid var(--panel-border)}
+.stat div{font-size:28px;font-weight:600;font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--ink-2)}
+
+/* ---------- overlays ---------- */
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);background:rgba(14,22,52,.96);border:1px solid var(--panel-border);color:#fff;padding:12px 20px;border-radius:980px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;z-index:80;max-width:calc(100vw - 40px);text-align:center;box-shadow:0 14px 40px rgba(0,0,0,.45)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.error{border-color:rgba(232,90,115,.6);background:rgba(60,14,28,.96)}
+.xp-pop{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:81;pointer-events:none;font-size:20px;font-weight:700;color:#000;background:linear-gradient(160deg,#ffd60a,#ff9f0a);padding:7px 16px;border-radius:980px;box-shadow:0 10px 30px rgba(255,159,10,.4);animation:xpPop 1.6s cubic-bezier(.16,1,.3,1) forwards}
+@keyframes xpPop{0%{opacity:0;transform:translate(-50%,20px) scale(.7)}15%{opacity:1;transform:translate(-50%,0) scale(1.08)}25%{transform:translate(-50%,0) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-46px)}}
+.viz-tip{position:fixed;z-index:85;pointer-events:none;background:rgba(10,16,40,.97);border:1px solid var(--panel-border);border-radius:12px;padding:10px 12px;font-size:12px;box-shadow:0 12px 30px rgba(0,0,0,.45);opacity:0;transition:opacity .12s;min-width:150px}
+.viz-tip.show{opacity:1}
+.viz-tip .t{color:var(--ink-2);margin-bottom:6px}
+.viz-tip .r{display:flex;justify-content:space-between;gap:10px}
+.viz-tip .r span{display:flex;align-items:center;gap:6px;color:var(--ink-2)}
+.viz-tip .r i{width:8px;height:8px;border-radius:2px}
+dialog{border:1px solid var(--panel-border);padding:0;border-radius:26px;color:var(--ink);background:radial-gradient(100% 80% at 50% 0%,#1b2a5c,#070c20 70%);text-align:center;width:min(440px,calc(100vw - 32px));box-shadow:0 30px 80px rgba(0,0,0,.6)}
+dialog::backdrop{background:rgba(2,4,12,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+dialog[open]{animation:sheet .4s cubic-bezier(.2,.8,.2,1)}
+@keyframes sheet{from{opacity:0;transform:translateY(20px) scale(.97)}}
+.lu{padding:44px 32px 32px}
+.lu svg{width:88px;height:88px;color:var(--yellow);filter:drop-shadow(0 0 30px rgba(255,214,10,.6));animation:boltIn .9s cubic-bezier(.34,1.56,.64,1)}
+@keyframes boltIn{from{transform:scale(.3) rotate(-20deg);opacity:0}}
+.lu .lv{color:var(--yellow);font-weight:600;margin-top:12px}
+.lu h3{font-size:36px;margin:4px 0 8px}
+.lu p{color:var(--ink-2);margin-bottom:24px}
+
+/* ---------- responsive ---------- */
+@media (max-width:1180px){
+  .kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .flow{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .stage:nth-child(3)::after{display:none}
+}
+@media (max-width:1024px){
+  .g-main,.g2{grid-template-columns:1fr}
+  .doors{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .sidebar{position:fixed;left:0;top:0;bottom:0;width:min(280px,84vw);transform:translateX(-102%);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+  .sidebar.open{transform:none}
+  .scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:25;opacity:0;pointer-events:none;transition:opacity .3s}
+  .scrim.show{opacity:1;pointer-events:auto}
+  .mobilebar{display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20;height:56px;padding:0 16px;background:rgba(6,10,24,.8);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--hair)}
+  .mobilebar button{width:40px;height:40px;border-radius:10px;border:1px solid var(--hair);background:rgba(255,255,255,.04);display:grid;place-items:center}
+  .mobilebar button svg{width:20px;height:20px}
+  .mobilebar strong{font-size:17px}
+  .main{padding:24px 16px 48px}
+  .stations{grid-template-columns:1fr}
+}
+@media (max-width:640px){
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kpi .num{font-size:30px}
+  .flow{grid-template-columns:1fr 1fr}
+  .stage::after{display:none}
+  .welcome{padding:40px 20px 28px}
+  .hud{grid-template-columns:auto minmax(0,1fr)}
+  .hud-xp{grid-column:1/-1;text-align:left;display:flex;gap:8px;align-items:baseline}
+  .doors{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .panel{padding:18px;border-radius:20px}
+  .view-head p{font-size:17px}
+}
+@media (prefers-reduced-motion:reduce){
+  .view.enter,.feed li.fresh,.tote-vis i.pop,.ship-anim,dialog[open],.lu svg,.chip.live::before{animation:none}
+  .xp-pop{animation:none;opacity:1}
+  .welcome .flash.on{animation:none}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-dashboard" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="13.5" y="3.5" width="7" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="3.5" y="13.5" width="7" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="13.5" y="13.5" width="7" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+  <symbol id="i-inventory" viewBox="0 0 24 24"><path d="M3.5 8 12 3.5 20.5 8v8L12 20.5 3.5 16z M3.5 8 12 12.5 20.5 8 M12 12.5v8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  <symbol id="i-unload" viewBox="0 0 24 24"><path d="M2.5 6.5h11v10h-11z M13.5 10h4l3 3.2v3.3h-7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="6.5" cy="17.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="16.5" cy="17.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+  <symbol id="i-process" viewBox="0 0 24 24"><path d="M4 9.5h16v10H4z M4 9.5l2.5-5h11l2.5 5 M9.5 13.5h5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-tranship" viewBox="0 0 24 24"><path d="M4.5 7.5h15l-1.5 12h-12z M3.5 7.5h17 M9 11.5h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M9 4.5h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-liquidation" viewBox="0 0 24 24"><path d="M12.6 3.5H20.5v7.9l-9 9-7.9-7.9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="16.3" cy="7.7" r="1.5" fill="currentColor"/></symbol>
+  <symbol id="i-activity" viewBox="0 0 24 24"><path d="M2.5 12.5h4l2.5-6 4 12 2.8-8 1.7 2h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.5 2 4.5 13.5h6L9.5 22l9-11.5h-6z" fill="currentColor"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-truck-big" viewBox="0 0 46 30"><path d="M1 3h27v20H1z M28 9h9l7 7v7H28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="9" cy="25" r="3.2" fill="#0a1330" stroke="currentColor" stroke-width="1.6"/><circle cx="36" cy="25" r="3.2" fill="#0a1330" stroke="currentColor" stroke-width="1.6"/></symbol>
+</svg>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <a class="brand" href="#dashboard">
+      <svg viewBox="0 0 26 26" aria-hidden="true"><rect width="26" height="26" rx="7" fill="#2f7bff"/><path d="M8 17.5 17.5 8M10.8 8h6.7v6.7" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      StockFlow <span class="site">IND8</span>
+    </a>
+    <nav class="nav" id="nav">
+      <a href="#dashboard" data-route="dashboard"><svg><use href="#i-dashboard"/></svg>Dashboard</a>
+      <a href="#inventory" data-route="inventory"><svg><use href="#i-inventory"/></svg>Inventory<span class="count" id="c-inventory"></span></a>
+      <a href="#unload" data-route="unload"><svg><use href="#i-unload"/></svg>Unload<span class="count" id="c-unload"></span></a>
+      <a href="#process" data-route="process"><svg><use href="#i-process"/></svg>Process<span class="count" id="c-process"></span></a>
+      <a href="#tranship" data-route="tranship"><svg><use href="#i-tranship"/></svg>Tranship<span class="count" id="c-tranship"></span></a>
+      <a href="#liquidation" data-route="liquidation"><svg><use href="#i-liquidation"/></svg>Liquidation<span class="count" id="c-liquidation"></span></a>
+      <div class="nav-sep"></div>
+      <a href="#activity" data-route="activity"><svg><use href="#i-activity"/></svg>Activity<span class="count" id="c-activity"></span></a>
+    </nav>
+    <div class="user-card">
+      <div class="avatar">IA<b id="u-level">1</b></div>
+      <div><strong>IND8 Associate</strong><span id="u-title">Level 1 · Rookie</span></div>
+      <div class="mini-xp"><i id="u-xp"></i></div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <div>
+    <div class="mobilebar">
+      <button type="button" id="menu-btn" aria-label="Open navigation"><svg><use href="#i-menu"/></svg></button>
+      <strong id="mobile-title">Dashboard</strong>
+    </div>
+
+    <main class="main" id="main">
+      <!-- ================= DASHBOARD ================= -->
+      <section class="view" data-view="dashboard" aria-label="Dashboard">
+        <div class="welcome" id="welcome">
+          <canvas id="storm" aria-hidden="true"></canvas>
+          <div class="flash" id="flash" aria-hidden="true"></div>
+          <h1><span>Welcome to IND8.</span><span class="l2">Home of the Thunder.</span></h1>
+          <p class="lede">Unload the trucks, process every item, and keep the floor moving. Every move earns XP.</p>
+          <div class="actions">
+            <a class="btn" href="#unload">Start unloading</a>
+            <a class="more" href="#activity">See what’s happening</a>
+          </div>
+          <div class="hud" aria-label="Your progress">
+            <div class="lvl-badge"><svg><use href="#i-bolt"/></svg><b id="h-level">1</b></div>
+            <div>
+              <div class="hud-name">Level <span id="h-level-2">1</span> <span>·</span> <strong id="h-name">Rookie</strong></div>
+              <div class="xp-bar"><i id="h-xp-bar"></i></div>
+              <div class="xp-caption" id="h-xp-caption"></div>
+            </div>
+            <div class="hud-xp"><div id="h-xp">0</div><span>total XP</span></div>
+          </div>
+        </div>
+        <div class="kpis" id="d-kpis"></div>
+        <div class="panel mt">
+          <div class="panel-head"><div><h2>Floor flow</h2><p class="sub">Where everything is right now. Click a stage to work on it.</p></div></div>
+          <div class="flow" id="d-flow"></div>
+        </div>
+        <div class="grid g-main mt">
+          <div class="panel">
+            <div class="panel-head">
+              <div><h2>Items processed</h2><p class="sub">Running totals as items leave the process stations.</p></div>
+              <ul class="legend"><li><i style="background:var(--s1)"></i>Sellable (yellow totes)</li><li><i style="background:var(--s5)"></i>Liquidation</li></ul>
+            </div>
+            <div id="d-chart"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><div><h2>Latest activity</h2></div><a class="more" href="#activity">View all</a></div>
+            <ul class="feed" id="d-feed"></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= INVENTORY ================= -->
+      <section class="view" data-view="inventory" aria-label="Inventory" hidden>
+        <header class="view-head">
+          <div><h1>Inventory.</h1><p>What’s on the way from other organizations, and what’s already in the building.</p></div>
+          <div class="actions"><button class="btn ghost" data-act="schedule">Schedule inbound truck</button></div>
+        </header>
+        <div class="seg" role="tablist" aria-label="Inventory view">
+          <button role="tab" data-tab="inbound" aria-selected="true">Inbound</button>
+          <button role="tab" data-tab="onhand" aria-selected="false">On hand</button>
+        </div>
+        <div id="inv-body"></div>
+      </section>
+
+      <!-- ================= UNLOAD ================= -->
+      <section class="view" data-view="unload" aria-label="Unload" hidden>
+        <header class="view-head">
+          <div><h1>Unload.</h1><p>Check trucks in at a door, unload their boxes, and send each box to a process station.</p></div>
+          <div class="actions"><button class="btn ghost" data-act="schedule">Schedule inbound truck</button></div>
+        </header>
+        <div id="unload-body"></div>
+      </section>
+
+      <!-- ================= PROCESS ================= -->
+      <section class="view" data-view="process" aria-label="Process" hidden>
+        <header class="view-head">
+          <div><h1>Process.</h1><p>Open each box and check every item. Clean items go in a yellow tote to be sold. Damaged items go to liquidation.</p></div>
+        </header>
+        <div id="process-body"></div>
+      </section>
+
+      <!-- ================= TRANSHIP ================= -->
+      <section class="view" data-view="tranship" aria-label="Tranship" hidden>
+        <header class="view-head">
+          <div><h1>Tranship.</h1><p>Stage full yellow totes, load them onto the outbound truck, and ship them to be sold.</p></div>
+          <div class="actions"><button class="btn yellow" data-act="loadAll">Load all totes</button></div>
+        </header>
+        <div id="tranship-body"></div>
+      </section>
+
+      <!-- ================= LIQUIDATION ================= -->
+      <section class="view" data-view="liquidation" aria-label="Liquidation" hidden>
+        <header class="view-head">
+          <div><h1>Liquidation.</h1><p>Damaged items collect on the pallet until it ships to the liquidation partner.</p></div>
+          <div class="actions"><button class="btn rose" data-act="shipLiq">Send pallet to liquidation</button></div>
+        </header>
+        <div id="liq-body"></div>
+      </section>
+
+      <!-- ================= ACTIVITY ================= -->
+      <section class="view" data-view="activity" aria-label="Activity" hidden>
+        <header class="view-head">
+          <div><h1>Activity.</h1><p>Everything that happens on the floor, the moment it happens.</p></div>
+          <div class="actions"><span class="chip transit live">Live</span><button class="btn ghost" data-act="reset">Start a new shift</button></div>
+        </header>
+        <div id="act-body"></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<dialog id="levelup" aria-labelledby="lu-title">
+  <form method="dialog" class="lu">
+    <svg><use href="#i-bolt"/></svg>
+    <div class="lv" id="lu-num">Level 2</div>
+    <h3 id="lu-title">Level up!</h3>
+    <p id="lu-text"></p>
+    <button class="btn" type="submit">Keep going</button>
+  </form>
+</dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="viz-tip" id="tip" aria-hidden="true"></div>
+
+<script>
+/* StockFlow floor engine for the browser: a port of app/warehouse.py and the /api routes in app/main.py.
+   Used by the static build (public/index.html) so the app runs on static hosting such as Vercel.
+   Same rules and responses as the server; state lives in the page and resets on reload. */
+(() => {
+  const DOORS = 4, STATIONS = 4, TOTE_CAPACITY = 8, OUTBOUND_CAPACITY = 10, MAX_IN_TRANSIT = 6;
+  const ORGS = ["Northgate Retail", "Bluepeak Outlet", "Harbor Supply Co.", "Summit Home Goods", "Riverside Electronics"];
+  const CATALOG = [["Wireless Mouse", "Electronics"], ["Bluetooth Headphones", "Electronics"], ["USB-C Cable", "Electronics"], ["Smart Watch", "Electronics"], ["Coffee Maker", "Kitchen"], ["Cookware Set", "Kitchen"], ["Desk Lamp", "Home"], ["Throw Pillow", "Home"], ["Yoga Mat", "Sports"], ["Water Bottle", "Sports"], ["Phone Case", "Accessories"], ["Kids' Sneakers", "Apparel"]];
+  const CLEAN = ["Sealed in original packaging", "Opened, like new", "Minor box wear, item perfect", "Tested and working"];
+  const DAMAGE = { Electronics: ["Cracked casing", "Won't power on", "Water damage", "Frayed cable"], Kitchen: ["Cracked glass", "Dented body", "Missing parts"], Home: ["Broken base", "Torn fabric", "Stained"], Sports: ["Torn surface", "Punctured", "Dented"], Accessories: ["Cracked", "Scratched and scuffed"], Apparel: ["Torn fabric", "Stained", "Missing one shoe"] };
+  const XP = { check_in: 5, unload: 20, distribute: 5, open_box: 5, route_correct: 10, route_clean_to_liquidation: 2, box_done: 5, tote_full: 15, load_tote: 5, ship_outbound: 50, ship_liquidation: 30 };
+  const LEVELS = [[0, "Rookie"], [150, "Sorter"], [400, "Processor"], [800, "Problem Solver"], [1400, "Storm Chaser"], [2200, "Thunder Legend"]];
+
+  class DomainError extends Error { constructor(status, message) { super(message); this.status = status; } }
+  const now = () => new Date().toISOString();
+  const clone = o => JSON.parse(JSON.stringify(o));
+
+  class Warehouse {
+    constructor(seed = 8) {
+      let s = seed >>> 0;
+      this.random = () => { s += 0x6D2B79F5; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+      this.trucks = {}; this.boxes = {}; this.items = {}; this.totes = {}; this.outbound = {}; this.pallets = {}; this.events = [];
+      this.seq = { truck: 1000, box: 20000, item: 1000, tote: 100, out: 500, pallet: 300, event: 0 };
+      this.openTote = this.newTote(); this.openOutbound = this.newOutbound(); this.openPallet = this.newPallet();
+    }
+    static seeded(seed = 8) {
+      const wh = new Warehouse(seed);
+      wh.log("shift", "shift_started", "Shift started at IND8. Home of the Thunder.");
+      const first = wh.newTruck(); first.status = "at_door"; first.door = 1; first.arrived_at = now();
+      wh.newTruck(); wh.newTruck();
+      return wh;
+    }
+    next(k) { return ++this.seq[k]; }
+    int(a, b) { return a + Math.floor(this.random() * (b - a + 1)); }
+    pick(arr) { return arr[Math.floor(this.random() * arr.length)]; }
+    newTruck() {
+      const t = { id: `TRK-${this.next("truck")}`, origin: this.pick(ORGS), status: "in_transit", eta_minutes: this.int(10, 45), box_ids: [], door: null, arrived_at: null, unloaded_at: null };
+      const nb = this.int(3, 6);
+      for (let b = 0; b < nb; b++) {
+        const box = { id: `BX-${this.next("box")}`, truck_id: t.id, origin: t.origin, status: "on_truck", item_ids: [], station: null };
+        const ni = this.int(2, 5);
+        for (let i = 0; i < ni; i++) {
+          const [name, category] = this.pick(CATALOG), damaged = this.random() < 0.25;
+          const item = { id: `IT-${this.next("item")}`, box_id: box.id, name, category, condition: damaged ? "damaged" : "clean", note: this.pick(damaged ? DAMAGE[category] : CLEAN), status: "in_box", tote_id: null, pallet_id: null };
+          this.items[item.id] = item; box.item_ids.push(item.id);
+        }
+        this.boxes[box.id] = box; t.box_ids.push(box.id);
+      }
+      this.trucks[t.id] = t; return t;
+    }
+    newTote() { const t = { id: `YT-${this.next("tote")}`, status: "open", item_ids: [], outbound_id: null }; this.totes[t.id] = t; return t; }
+    newOutbound() { const o = { id: `OUT-${this.next("out")}`, destination: "Resale marketplace", status: "loading", tote_ids: [], shipped_at: null }; this.outbound[o.id] = o; return o; }
+    newPallet() { const p = { id: `LQ-${this.next("pallet")}`, partner: "Liquidation partner", status: "open", item_ids: [], shipped_at: null }; this.pallets[p.id] = p; return p; }
+    log(area, kind, message, xp = 0, data = {}) { this.events.push({ id: this.next("event"), at: now(), area, kind, message, xp, data }); }
+    get(col, key, label) { const v = this[col][key]; if (!v) throw new DomainError(404, `${label} ${key} not found`); return v; }
+
+    scheduleTruck() {
+      const n = Object.values(this.trucks).filter(t => t.status === "in_transit").length;
+      if (n >= MAX_IN_TRANSIT) throw new DomainError(409, `${MAX_IN_TRANSIT} trucks are already on the way.`);
+      const t = this.newTruck(), items = t.box_ids.reduce((s, b) => s + this.boxes[b].item_ids.length, 0);
+      this.log("unload", "truck_scheduled", `${t.id} from ${t.origin} is on the way with ${t.box_ids.length} boxes (${items} items).`, 0, { truck: t.id });
+    }
+    checkIn(id) {
+      const t = this.get("trucks", id, "Truck");
+      if (t.status !== "in_transit") throw new DomainError(409, `${t.id} has already arrived.`);
+      const busy = new Set(Object.values(this.trucks).filter(x => x.status === "at_door").map(x => x.door));
+      const free = [1, 2, 3, 4].filter(d => !busy.has(d));
+      if (!free.length) throw new DomainError(409, `All ${DOORS} doors are busy. Unload a truck first.`);
+      t.status = "at_door"; t.door = free[0]; t.arrived_at = now();
+      this.log("unload", "truck_checked_in", `${t.id} checked in at door ${t.door}.`, XP.check_in, { truck: t.id });
+    }
+    unload(id) {
+      const t = this.get("trucks", id, "Truck");
+      if (t.status !== "at_door") throw new DomainError(409, `${t.id} must be at a door before it can be unloaded.`);
+      t.box_ids.forEach(b => this.boxes[b].status = "staged");
+      const door = t.door; t.status = "unloaded"; t.door = null; t.unloaded_at = now();
+      this.log("unload", "truck_unloaded", `Unloaded ${t.box_ids.length} boxes from ${t.id} at door ${door}.`, XP.unload, { truck: t.id, boxes: t.box_ids.length });
+    }
+    distribute(id, station) {
+      const b = this.get("boxes", id, "Box");
+      if (b.status !== "staged") throw new DomainError(409, `${b.id} is not waiting in staging.`);
+      if (!(station >= 1 && station <= STATIONS)) throw new DomainError(422, `Choose a station from 1 to ${STATIONS}.`);
+      b.status = "at_station"; b.station = station;
+      this.log("unload", "box_distributed", `${b.id} sent to process station ${station}.`, XP.distribute, { box: b.id, station });
+    }
+    distributeAll() {
+      const staged = Object.values(this.boxes).filter(b => b.status === "staged");
+      if (!staged.length) throw new DomainError(409, "No boxes are waiting in staging.");
+      for (const box of staged) {
+        const load = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        Object.values(this.boxes).forEach(b => { if ((b.status === "at_station" || b.status === "open") && b.station) load[b.station]++; });
+        const st = [1, 2, 3, 4].sort((a, c) => load[a] - load[c] || a - c)[0];
+        this.distribute(box.id, st);
+      }
+    }
+    openBox(id) {
+      const b = this.get("boxes", id, "Box");
+      if (b.status !== "at_station") throw new DomainError(409, `${b.id} is not waiting at a station.`);
+      if (Object.values(this.boxes).some(x => x.status === "open" && x.station === b.station)) throw new DomainError(409, `Finish the open box at station ${b.station} first.`);
+      b.status = "open";
+      this.log("process", "box_opened", `Opened ${b.id} at station ${b.station}: ${b.item_ids.length} items inside.`, XP.open_box, { box: b.id, station: b.station });
+    }
+    routeItem(id, dest) {
+      const item = this.get("items", id, "Item");
+      if (item.status !== "in_box") throw new DomainError(409, `${item.name} has already been processed.`);
+      const box = this.boxes[item.box_id];
+      if (box.status !== "open") throw new DomainError(409, `Open ${box.id} before processing its items.`);
+      if (dest === "yellow_tote") {
+        if (item.condition === "damaged") throw new DomainError(422, `${item.name} is damaged (${item.note.toLowerCase()}). Send it to liquidation.`);
+        const tote = this.openTote; tote.item_ids.push(item.id); item.status = "yellow_tote"; item.tote_id = tote.id;
+        this.log("process", "item_to_tote", `${item.name} is clean and went into yellow tote ${tote.id}.`, XP.route_correct, { item: item.id, destination: "yellow_tote" });
+        if (tote.item_ids.length >= TOTE_CAPACITY) this.finishTote(tote, "is full");
+      } else if (dest === "liquidation") {
+        const p = this.openPallet; p.item_ids.push(item.id); item.status = "liquidation"; item.pallet_id = p.id;
+        const xp = item.condition === "damaged" ? XP.route_correct : XP.route_clean_to_liquidation;
+        const reason = item.condition === "damaged" ? item.note.toLowerCase() : "clean item, sent by choice";
+        this.log("liquidation", "item_to_liquidation", `${item.name} (${reason}) went to pallet ${p.id}.`, xp, { item: item.id, destination: "liquidation" });
+      } else throw new DomainError(422, "Destination must be yellow_tote or liquidation.");
+      if (box.item_ids.every(i => this.items[i].status !== "in_box")) {
+        box.status = "done";
+        this.log("process", "box_done", `${box.id} is empty. Station ${box.station} is free.`, XP.box_done, { box: box.id });
+      }
+    }
+    finishTote(tote, reason) {
+      tote.status = "full";
+      this.log("tranship", "tote_full", `Yellow tote ${tote.id} ${reason} (${tote.item_ids.length} items) and is staged for tranship.`, XP.tote_full, { tote: tote.id });
+      this.openTote = this.newTote();
+    }
+    closeTote() { if (!this.openTote.item_ids.length) throw new DomainError(409, "The yellow tote is empty."); this.finishTote(this.openTote, "was closed early"); }
+    loadTote(id) {
+      const tote = this.get("totes", id, "Tote");
+      if (tote.status !== "full") throw new DomainError(409, `Tote ${tote.id} is not staged for tranship.`);
+      const t = this.openOutbound;
+      if (t.tote_ids.length >= OUTBOUND_CAPACITY) throw new DomainError(409, `${t.id} is full. Ship it first.`);
+      t.tote_ids.push(tote.id); tote.status = "loaded"; tote.outbound_id = t.id;
+      this.log("tranship", "tote_loaded", `Loaded yellow tote ${tote.id} onto ${t.id}.`, XP.load_tote, { tote: tote.id, truck: t.id });
+    }
+    loadAll() {
+      const staged = Object.values(this.totes).filter(t => t.status === "full");
+      if (!staged.length) throw new DomainError(409, "No full totes are waiting.");
+      const room = OUTBOUND_CAPACITY - this.openOutbound.tote_ids.length;
+      if (room <= 0) throw new DomainError(409, `${this.openOutbound.id} is full. Ship it first.`);
+      staged.slice(0, room).forEach(t => this.loadTote(t.id));
+    }
+    shipOutbound() {
+      const t = this.openOutbound;
+      if (!t.tote_ids.length) throw new DomainError(409, "Load at least one tote before shipping.");
+      const units = t.tote_ids.reduce((s, id) => s + this.totes[id].item_ids.length, 0);
+      t.tote_ids.forEach(id => this.totes[id].status = "shipped");
+      t.status = "shipped"; t.shipped_at = now();
+      this.log("tranship", "outbound_shipped", `${t.id} shipped ${t.tote_ids.length} totes (${units} units) to be sold.`, XP.ship_outbound, { truck: t.id, units });
+      this.openOutbound = this.newOutbound();
+    }
+    shipLiquidation() {
+      const p = this.openPallet;
+      if (!p.item_ids.length) throw new DomainError(409, "The liquidation pallet is empty.");
+      p.status = "shipped"; p.shipped_at = now();
+      this.log("liquidation", "pallet_shipped", `Pallet ${p.id} with ${p.item_ids.length} items sent to liquidation.`, XP.ship_liquidation, { pallet: p.id, units: p.item_ids.length });
+      this.openPallet = this.newPallet();
+    }
+    get xp() { return this.events.reduce((s, e) => s + e.xp, 0); }
+    level() {
+      const xp = this.xp; let idx = 0; LEVELS.forEach(([f], i) => { if (xp >= f) idx = i; });
+      const nx = LEVELS[idx + 1];
+      return { number: idx + 1, name: LEVELS[idx][1], floor_xp: LEVELS[idx][0], next_xp: nx ? nx[0] : null, next_name: nx ? nx[1] : null };
+    }
+    summary() {
+      const T = Object.values(this.trucks), B = Object.values(this.boxes), I = Object.values(this.items), TT = Object.values(this.totes);
+      const inb = B.filter(b => b.status === "on_truck"), len = a => a.item_ids.length;
+      return {
+        trucks_in_transit: T.filter(t => t.status === "in_transit").length,
+        trucks_at_door: T.filter(t => t.status === "at_door").length,
+        boxes_inbound: inb.length, items_inbound: inb.reduce((s, b) => s + len(b), 0),
+        boxes_staged: B.filter(b => b.status === "staged").length,
+        boxes_at_stations: B.filter(b => b.status === "at_station" || b.status === "open").length,
+        items_processed: I.filter(i => i.status !== "in_box").length,
+        sellable_units: TT.filter(t => ["open", "full", "loaded"].includes(t.status)).reduce((s, t) => s + len(t), 0),
+        totes_staged: TT.filter(t => t.status === "full").length,
+        liquidation_units: len(this.openPallet),
+        units_shipped: TT.filter(t => t.status === "shipped").reduce((s, t) => s + len(t), 0),
+        units_liquidated: Object.values(this.pallets).filter(p => p.status === "shipped").reduce((s, p) => s + len(p), 0),
+      };
+    }
+    snapshot() {
+      return clone({
+        config: { doors: DOORS, stations: STATIONS, tote_capacity: TOTE_CAPACITY, outbound_capacity: OUTBOUND_CAPACITY },
+        trucks: Object.values(this.trucks), boxes: Object.values(this.boxes), items: Object.values(this.items),
+        totes: Object.values(this.totes), outbound: Object.values(this.outbound), pallets: Object.values(this.pallets),
+        open_tote: this.openTote.id, open_outbound: this.openOutbound.id, open_pallet: this.openPallet.id,
+        events: this.events.slice(-500), summary: this.summary(), player: { xp: this.xp, level: this.level() },
+      });
+    }
+  }
+
+  let wh = Warehouse.seeded(Date.now() % 100000);
+  const res = (status, body) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  const routes = [
+    ["GET", /^\/api\/state$/, () => null],
+    ["POST", /^\/api\/trucks$/, () => wh.scheduleTruck()],
+    ["POST", /^\/api\/trucks\/([^/]+)\/check-in$/, m => wh.checkIn(m[1])],
+    ["POST", /^\/api\/trucks\/([^/]+)\/unload$/, m => wh.unload(m[1])],
+    ["POST", /^\/api\/boxes\/distribute-all$/, () => wh.distributeAll()],
+    ["POST", /^\/api\/boxes\/([^/]+)\/distribute$/, (m, b) => wh.distribute(m[1], Number(b.station))],
+    ["POST", /^\/api\/boxes\/([^/]+)\/open$/, m => wh.openBox(m[1])],
+    ["POST", /^\/api\/items\/([^/]+)\/route$/, (m, b) => wh.routeItem(m[1], b.destination)],
+    ["POST", /^\/api\/totes\/close$/, () => wh.closeTote()],
+    ["POST", /^\/api\/totes\/load-all$/, () => wh.loadAll()],
+    ["POST", /^\/api\/totes\/([^/]+)\/load$/, m => wh.loadTote(m[1])],
+    ["POST", /^\/api\/outbound\/ship$/, () => wh.shipOutbound()],
+    ["POST", /^\/api\/liquidation\/ship$/, () => wh.shipLiquidation()],
+    ["POST", /^\/api\/reset$/, () => { wh = Warehouse.seeded(Date.now() % 100000); }],
+  ];
+  window.fetch = async (path, opts = {}) => {
+    const method = (opts.method || "GET").toUpperCase(), body = opts.body ? JSON.parse(opts.body) : {};
+    for (const [mth, re, fn] of routes) {
+      const m = path.match(re);
+      if (m && mth === method) {
+        try { fn(m, body); return res(200, wh.snapshot()); }
+        catch (e) { if (e instanceof DomainError) return res(e.status, { detail: e.message }); throw e; }
+      }
+    }
+    return res(404, { detail: "Not found" });
+  };
+})();
+
+</script>
+<script>
+/* =====================================================================
+   StockFlow IND8 – single-page floor app
+   State lives on the server (/api/state). Every action returns the new
+   snapshot; the UI re-renders the current screen from it.
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const ROUTES = ["dashboard", "inventory", "unload", "process", "tranship", "liquidation", "activity"];
+const TITLES = { dashboard: "Dashboard", inventory: "Inventory", unload: "Unload", process: "Process", tranship: "Tranship", liquidation: "Liquidation", activity: "Activity" };
+const AREA_ICON = { unload: "i-unload", process: "i-process", tranship: "i-tranship", liquidation: "i-liquidation", shift: "i-bolt" };
+
+let S = null;               // current snapshot
+let current = "dashboard";  // current route
+let invTab = "inbound";
+let actFilter = "all";
+let seenEventId = 0;
+let busy = false;
+const ui = { lastToteCount: 0 };
+
+/* ---------- API ---------- */
+async function api(path, body, method = "GET") {
+  const res = await fetch(path, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: method === "POST" ? JSON.stringify(body ?? {}) : undefined,
+  });
+  const data = await res.json().catch(() => ({ detail: "Unexpected server response" }));
+  if (!res.ok) throw new Error(Array.isArray(data.detail) ? data.detail.map(d => d.msg).join("; ") : data.detail || "Request failed");
+  return data;
+}
+const post = (path, body) => api(path, body ?? {}, "POST");
+
+const ACTIONS = {
+  schedule: () => post("/api/trucks"),
+  checkin: el => post(`/api/trucks/${el.dataset.id}/check-in`),
+  unload: el => post(`/api/trucks/${el.dataset.id}/unload`),
+  distribute: el => post(`/api/boxes/${el.dataset.id}/distribute`, { station: Number(el.dataset.station) }),
+  distributeAll: () => post("/api/boxes/distribute-all"),
+  open: el => post(`/api/boxes/${el.dataset.id}/open`),
+  tote: el => post(`/api/items/${el.dataset.id}/route`, { destination: "yellow_tote" }),
+  liq: el => post(`/api/items/${el.dataset.id}/route`, { destination: "liquidation" }),
+  closeTote: () => post("/api/totes/close"),
+  load: el => post(`/api/totes/${el.dataset.id}/load`),
+  loadAll: () => post("/api/totes/load-all"),
+  ship: () => post("/api/outbound/ship"),
+  shipLiq: () => post("/api/liquidation/ship"),
+  reset: () => post("/api/reset"),
+};
+
+document.addEventListener("click", async e => {
+  const el = e.target.closest("[data-act]");
+  if (!el || busy || el.disabled) return;
+  const act = ACTIONS[el.dataset.act];
+  if (!act) return;
+  busy = true;
+  try {
+    if (el.dataset.act === "ship" && !reduceMotion) { const t = document.querySelector(".truck-wrap"); if (t) { t.classList.add("ship-anim"); await new Promise(r => setTimeout(r, 650)); } }
+    applyState(await act(el), true);
+  } catch (err) { toast(err.message, true); }
+  finally { busy = false; }
+});
+
+/* ---------- state ---------- */
+function applyState(next, fromAction) {
+  const prev = S;
+  S = next;
+  index();
+  render();
+  if (!prev || !fromAction) { seenEventId = lastEventId(); return; }
+  const fresh = S.events.filter(ev => ev.id > seenEventId);
+  seenEventId = lastEventId();
+  if (fresh.length) toast(fresh[fresh.length - 1].message);
+  const gained = S.player.xp - prev.player.xp;
+  if (gained > 0) { xpPop(gained); window.strike && window.strike(); }
+  if (S.player.level.number > prev.player.level.number) levelUp(S.player.level);
+}
+const lastEventId = () => S.events.length ? S.events[S.events.length - 1].id : 0;
+const by = {};
+function index() {
+  for (const k of ["trucks", "boxes", "items", "totes", "outbound", "pallets"]) by[k] = Object.fromEntries(S[k].map(x => [x.id, x]));
+}
+const itemsIn = ids => ids.map(id => by.items[id]).filter(Boolean);
+const boxItems = box => itemsIn(box.item_ids);
+const truckItemCount = t => t.box_ids.reduce((n, b) => n + by.boxes[b].item_ids.length, 0);
+const pl = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
+const totalUnits = totes => totes.reduce((n, t) => n + t.item_ids.length, 0);
+
+/* ---------- router ---------- */
+function route() {
+  const r = location.hash.slice(1);
+  current = ROUTES.includes(r) ? r : "dashboard";
+  document.querySelectorAll(".view").forEach(v => {
+    const on = v.dataset.view === current;
+    v.hidden = !on;
+    if (on && !reduceMotion) { v.classList.remove("enter"); void v.offsetWidth; v.classList.add("enter"); }
+  });
+  document.querySelectorAll("#nav a").forEach(a => { if (a.dataset.route === current) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  $("mobile-title").textContent = TITLES[current];
+  document.title = TITLES[current] + " – StockFlow IND8";
+  closeMenu();
+  scrollTo(0, 0);
+  if (S) render();
+}
+addEventListener("hashchange", route);
+
+/* ---------- render ---------- */
+function render() {
+  renderChrome();
+  ({ dashboard: renderDashboard, inventory: renderInventory, unload: renderUnload, process: renderProcess,
+     tranship: renderTranship, liquidation: renderLiquidation, activity: renderActivity })[current]();
+}
+
+function renderChrome() {
+  const s = S.summary, lv = S.player.level, xp = S.player.xp;
+  const set = (id, n) => $(id).textContent = n ? n : "";
+  set("c-inventory", s.trucks_in_transit);
+  set("c-unload", s.trucks_at_door + s.boxes_staged);
+  set("c-process", s.boxes_at_stations);
+  set("c-tranship", s.totes_staged);
+  set("c-liquidation", s.liquidation_units);
+  $("u-level").textContent = lv.number;
+  $("u-title").textContent = `Level ${lv.number} · ${lv.name}`;
+  $("u-xp").style.width = levelPct(xp, lv) + "%";
+}
+const levelPct = (xp, lv) => lv.next_xp ? Math.round((xp - lv.floor_xp) / (lv.next_xp - lv.floor_xp) * 100) : 100;
+
+/* ===== Dashboard ===== */
+function renderDashboard() {
+  const s = S.summary, lv = S.player.level, xp = S.player.xp;
+  $("h-level").textContent = lv.number; $("h-level-2").textContent = lv.number; $("h-name").textContent = lv.name;
+  $("h-xp").textContent = xp;
+  $("h-xp-bar").style.width = levelPct(xp, lv) + "%";
+  $("h-xp-caption").textContent = lv.next_xp ? `${lv.next_xp - xp} XP to ${lv.next_name}` : "Top level reached. You’re a legend.";
+
+  const kpis = [
+    ["Trucks on the way", s.trucks_in_transit, "inventory", { truck_scheduled: 1, truck_checked_in: -1 }],
+    ["Boxes to process", s.boxes_staged + s.boxes_at_stations, "process", { truck_unloaded: e => e.data.boxes, box_done: -1 }],
+    ["Items processed", s.items_processed, "process", { item_to_tote: 1, item_to_liquidation: 1 }],
+    ["Sellable units", s.sellable_units, "tranship", { item_to_tote: 1, outbound_shipped: e => -e.data.units }],
+    ["Liquidation units", s.liquidation_units, "liquidation", { item_to_liquidation: 1, pallet_shipped: e => -e.data.units }],
+  ];
+  $("d-kpis").innerHTML = kpis.map(([label, val, href, deltas], i) => {
+    const series = replay(val, deltas);
+    const d = series[series.length - 1] - series[0];
+    return `<a class="kpi" href="#${href}"><span class="label">${label}</span><span class="num">${val}</span>
+      <span class="delta"><b class="${d > 0 ? "" : d < 0 ? "down" : "flat"}">${d > 0 ? "↑ +" + d : d < 0 ? "↓ " + d : "0"}</b> this shift</span>${sparkline(series, i)}</a>`;
+  }).join("");
+
+  const out = by.outbound[S.open_outbound];
+  $("d-flow").innerHTML = [
+    ["inventory", "i-inventory", "Inbound", s.trucks_in_transit, `${s.trucks_in_transit === 1 ? "truck" : "trucks"} · ${pl(s.items_inbound, "item")} on the way`],
+    ["unload", "i-unload", "Unload", s.trucks_at_door, `at ${s.trucks_at_door === 1 ? "a door" : "doors"} · ${pl(s.boxes_staged, "box", "boxes")} in staging`],
+    ["process", "i-process", "Process", s.boxes_at_stations, `${s.boxes_at_stations === 1 ? "box" : "boxes"} at stations · ${pl(s.items_processed, "item")} done`],
+    ["tranship", "i-tranship", "Tranship", s.totes_staged, `full ${s.totes_staged === 1 ? "tote" : "totes"} · ${out.tote_ids.length} on the truck`],
+  ].map(([href, ic, name, num, meta]) => `<a class="stage" href="#${href}"><span class="s-name"><svg><use href="#${ic}"/></svg>${name}</span><span class="s-num">${num}</span><span class="s-meta">${meta}</span><span class="s-go">Open</span></a>`).join("") +
+    `<a class="stage split" href="#liquidation"><span class="s-name"><svg><use href="#i-liquidation"/></svg>Liquidation</span>
+      <span class="half"><span class="s-meta">On the pallet</span><b>${s.liquidation_units}</b></span>
+      <span class="half"><span class="s-meta">Shipped to be sold</span><b>${s.units_shipped}</b></span>
+      <span class="half"><span class="s-meta">Liquidated</span><b>${s.units_liquidated}</b></span><span class="s-go">Open</span></a>`;
+
+  renderProcessedChart();
+  $("d-feed").innerHTML = feedHtml(S.events.slice(-6).reverse());
+}
+
+// Rebuild a metric's history by walking the event log backwards from its current value.
+function replay(currentValue, deltas) {
+  const vals = [currentValue];
+  let v = currentValue;
+  for (let i = S.events.length - 1; i >= 0; i--) {
+    const d = deltas[S.events[i].kind];
+    if (d === undefined) continue;
+    v -= typeof d === "function" ? d(S.events[i]) : d;
+    vals.unshift(v);
+  }
+  return vals;
+}
+function sparkline(values, i) {
+  const W = 72, H = 30, max = Math.max(1, ...values), min = Math.min(0, ...values);
+  const x = k => values.length < 2 ? W : 2 + k / (values.length - 1) * (W - 4);
+  const y = v => H - 3 - (v - min) / (max - min || 1) * (H - 8);
+  const line = values.length < 2 ? `M0 ${y(values[0])} L${W} ${y(values[0])}` : values.map((v, k) => `${k ? "L" : "M"}${x(k).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
+  const area = values.length < 2 ? "" : `<path d="${line} L${x(values.length - 1)} ${H} L${x(0)} ${H}Z" fill="url(#sg${i})"/>`;
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true"><defs><linearGradient id="sg${i}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3d8bff" stop-opacity=".35"/><stop offset="1" stop-color="#3d8bff" stop-opacity="0"/></linearGradient></defs>${area}<path d="${line}" fill="none" stroke="#3d8bff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px rgba(61,139,255,.8))"/><circle cx="${x(values.length - 1)}" cy="${y(values[values.length - 1])}" r="2.8" fill="#3d8bff"/></svg>`;
+}
+
+function renderProcessedChart() {
+  const host = $("d-chart");
+  const evs = S.events.filter(e => e.kind === "item_to_tote" || e.kind === "item_to_liquidation");
+  if (!evs.length) { host.innerHTML = `<div class="empty">Nothing processed yet.<a href="#process">Go to Process ›</a></div>`; return; }
+  const pts = [{ a: 0, b: 0, t: null }];
+  evs.forEach(e => { const p = pts[pts.length - 1]; pts.push({ a: p.a + (e.kind === "item_to_tote"), b: p.b + (e.kind === "item_to_liquidation"), t: e.at, msg: e.message }); });
+  const W = Math.max(300, host.clientWidth), H = innerWidth > 1024 ? 330 : 250, m = { l: 30, r: 30, t: 10, b: 26 }, iw = W - m.l - m.r, ih = H - m.t - m.b, n = pts.length - 1;
+  const ymax = niceMax(Math.max(...pts.map(p => Math.max(p.a, p.b)))), ticks = niceTicks(ymax);
+  const x = i => m.l + (n ? i / n : 1) * iw, y = v => m.t + ih - v / ymax * ih;
+  const path = k => pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(p[k]).toFixed(1)}`).join(" ");
+  const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 80))));
+  let g = `<defs><linearGradient id="pc-g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3d8bff" stop-opacity=".3"/><stop offset="1" stop-color="#3d8bff" stop-opacity="0"/></linearGradient></defs>`;
+  g += `<g class="grid-l">${ticks.map(v => `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/>`).join("")}</g>`;
+  g += ticks.map(v => `<text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join("");
+  g += pts.map((p, i) => (i === 0 ? `<text x="${x(0)}" y="${H - 6}">Start</text>` : (i % every === 0 && x(n) - x(i) > 60) || i === n ? `<text x="${x(i)}" y="${H - 6}" text-anchor="${i === n ? "end" : "middle"}">Item ${i}</text>` : "")).join("");
+  g += `<path d="${path("a")} L${x(n)} ${y(0)} L${x(0)} ${y(0)}Z" fill="url(#pc-g)"/>`;
+  g += `<path d="${path("a")}" fill="none" stroke="#3d8bff" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px rgba(61,139,255,.7))"/>`;
+  g += `<path d="${path("b")}" fill="none" stroke="#e85a73" stroke-width="2" stroke-linejoin="round"/>`;
+  const L = pts[n], ya = y(L.a), yb = Math.abs(y(L.b) - ya) < 14 ? ya + 14 : y(L.b);
+  g += `<circle cx="${x(n)}" cy="${y(L.a)}" r="4" fill="#3d8bff" stroke="#0c1530" stroke-width="2"/><circle cx="${x(n)}" cy="${y(L.b)}" r="4" fill="#e85a73" stroke="#0c1530" stroke-width="2"/>`;
+  g += `<text class="end-label" x="${x(n) + 8}" y="${ya + 4}">${L.a}</text><text class="end-label" x="${x(n) + 8}" y="${yb + 4}">${L.b}</text>`;
+  g += `<line id="pc-x" y1="${m.t}" y2="${m.t + ih}" stroke="rgba(200,215,255,.35)" opacity="0"/><rect id="pc-hit" x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/>`;
+  host.innerHTML = `<svg class="chart" role="img" aria-label="${L.a} items sent to yellow totes and ${L.b} to liquidation" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${g}</svg>`;
+  const svg = host.firstChild, cross = svg.querySelector("#pc-x");
+  svg.querySelector("#pc-hit").addEventListener("mousemove", ev => {
+    const r = svg.getBoundingClientRect(), i = Math.max(0, Math.min(n, Math.round(((ev.clientX - r.left) * W / r.width - m.l) / iw * n))), p = pts[i];
+    cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("opacity", 1);
+    tip(`<div class="t">${i ? "Item " + i + " · " + fmtTime(p.t) : "Start of shift"}</div><div class="r"><span><i style="background:#3d8bff"></i>Sellable</span><b>${p.a}</b></div><div class="r"><span><i style="background:#e85a73"></i>Liquidation</span><b>${p.b}</b></div>`, ev);
+  });
+  svg.querySelector("#pc-hit").addEventListener("mouseleave", () => { cross.setAttribute("opacity", 0); untip(); });
+}
+function niceMax(v) { if (v <= 4) return 4; const p = 10 ** Math.floor(Math.log10(v)), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p; }
+function niceTicks(max) { const step = Number.isInteger(max / 5) && max >= 5 && max !== 20 ? max / 5 : max / 4; const t = []; for (let v = 0; v <= max + 1e-9; v += step) t.push(Math.round(v)); return t; }
+const fmtTime = iso => new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+function feedHtml(events, fresh = 0) {
+  if (!events.length) return `<li class="muted">Nothing here yet.</li>`;
+  return events.map(e => `<li class="${e.id > fresh && fresh ? "fresh" : ""}"><span class="ic ${e.area}"><svg><use href="#${AREA_ICON[e.area] || "i-activity"}"/></svg></span><div><div class="msg">${esc(e.message)}</div><div class="when">${fmtTime(e.at)}</div></div><span class="xp">${e.xp ? "+" + e.xp + " XP" : ""}</span></li>`).join("");
+}
+
+/* ===== Inventory ===== */
+function renderInventory() {
+  document.querySelectorAll("[data-tab]").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === invTab));
+  const body = $("inv-body");
+  if (invTab === "inbound") {
+    const trucks = S.trucks.filter(t => t.status !== "unloaded");
+    const byOrg = {};
+    trucks.forEach(t => byOrg[t.origin] = (byOrg[t.origin] || 0) + truckItemCount(t));
+    const orgs = Object.entries(byOrg).sort((a, b) => b[1] - a[1]), max = orgs.length ? orgs[0][1] : 1;
+    body.innerHTML = `<div class="grid g-main">
+      <div class="panel"><div class="panel-head"><div><h2>Trucks from other organizations</h2><p class="sub">${pl(trucks.length, "truck")} · ${pl(S.summary.boxes_inbound, "box", "boxes")} · ${pl(S.summary.items_inbound, "item")} not yet unloaded</p></div></div>
+        ${trucks.length ? `<div class="table-wrap"><table><thead><tr><th>Truck</th><th>From</th><th>Status</th><th class="num">Boxes</th><th class="num">Items</th><th></th></tr></thead><tbody>
+        ${trucks.map(t => `<tr><td class="id">${t.id}</td><td>${esc(t.origin)}</td><td>${t.status === "at_door" ? `<span class="chip atdoor">At door ${t.door}</span>` : `<span class="chip transit">On the way · ${t.eta_minutes} min</span>`}</td>
+          <td class="num">${t.box_ids.length}</td><td class="num">${truckItemCount(t)}</td>
+          <td class="num">${t.status === "in_transit" ? `<button class="btn sm ghost" data-act="checkin" data-id="${t.id}">Check in</button>` : `<a class="more" href="#unload">Unload</a>`}</td></tr>`).join("")}
+        </tbody></table></div>` : `<div class="empty">No trucks on the way. Schedule one to keep the floor busy.</div>`}
+      </div>
+      <div class="panel"><div class="panel-head"><div><h2>Expected by organization</h2><p class="sub">Items still to unload</p></div></div>
+        ${orgs.length ? `<ul class="ranked">${orgs.map(([o, n]) => `<li><div class="r-top"><span>${esc(o)}</span><b>${n}</b></div><div class="r-bar"><i style="width:${n / max * 100}%;background:#3d8bff"></i></div></li>`).join("")}</ul>` : `<div class="empty">Nothing expected.</div>`}
+      </div></div>`;
+  } else {
+    const s = S.summary, tote = by.totes[S.open_tote], out = by.outbound[S.open_outbound];
+    const sellable = S.items.filter(i => i.status === "yellow_tote" && by.totes[i.tote_id].status !== "shipped");
+    const liq = S.items.filter(i => i.status === "liquidation" && by.pallets[i.pallet_id].status === "open");
+    const group = list => Object.entries(list.reduce((m, i) => (m[i.name] = m[i.name] || { n: 0, cat: i.category }, m[i.name].n++, m), {})).sort((a, b) => b[1].n - a[1].n);
+    const table = (rows, empty) => rows.length ? `<div class="table-wrap"><table><thead><tr><th>Product</th><th>Category</th><th class="num">Units</th></tr></thead><tbody>${rows.map(([n, v]) => `<tr><td>${esc(n)}</td><td class="muted">${esc(v.cat)}</td><td class="num">${v.n}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">${empty}</div>`;
+    body.innerHTML = `<div class="kpis" style="margin-top:0">
+        ${[["Boxes in staging", s.boxes_staged, "unload"], ["Boxes at stations", s.boxes_at_stations, "process"], ["Units in yellow totes", tote.item_ids.length + totalUnits(S.totes.filter(t => t.status === "full")), "process"], ["Units on outbound truck", totalUnits(itemsInTotes(out.tote_ids)), "tranship"], ["Units on liquidation pallet", s.liquidation_units, "liquidation"]]
+          .map(([l, n, h]) => `<a class="kpi plain" href="#${h}"><span class="label">${l}</span><span class="num">${n}</span></a>`).join("")}
+      </div>
+      <div class="grid g2 mt">
+        <div class="panel"><div class="panel-head"><div><h2>Sellable stock</h2><p class="sub">In yellow totes, not yet shipped</p></div></div>${table(group(sellable), "No sellable stock yet. Process some boxes.")}</div>
+        <div class="panel"><div class="panel-head"><div><h2>Liquidation stock</h2><p class="sub">On the open pallet</p></div></div>${table(group(liq), "The liquidation pallet is empty.")}</div>
+      </div>`;
+  }
+}
+const itemsInTotes = ids => ids.map(id => by.totes[id]);
+document.addEventListener("click", e => { const t = e.target.closest("[data-tab]"); if (t) { invTab = t.dataset.tab; renderInventory(); } });
+
+/* ===== Unload ===== */
+function renderUnload() {
+  const doors = S.config.doors, atDoor = S.trucks.filter(t => t.status === "at_door");
+  const transit = S.trucks.filter(t => t.status === "in_transit");
+  const staged = S.boxes.filter(b => b.status === "staged");
+  const unloaded = S.trucks.filter(t => t.status === "unloaded").reverse();
+  const doorHtml = Array.from({ length: doors }, (_, i) => {
+    const t = atDoor.find(x => x.door === i + 1);
+    if (!t) return `<div class="door"><div class="d-top"><span>Door ${i + 1}</span><span class="chip done">Open</span></div><p class="d-empty">No truck. Check one in from the yard.</p></div>`;
+    return `<div class="door busy"><div class="d-top"><span>Door ${i + 1}</span><span class="chip atdoor">Truck at door</span></div>
+      <svg class="truck-ic"><use href="#i-truck-big"/></svg><div class="d-id">${t.id}</div><div class="muted" style="font-size:13px">${esc(t.origin)} · ${pl(t.box_ids.length, "box", "boxes")} · ${pl(truckItemCount(t), "item")}</div>
+      <button class="btn" data-act="unload" data-id="${t.id}">Unload ${t.box_ids.length} boxes</button></div>`;
+  }).join("");
+  const free = doors - atDoor.length;
+  $("unload-body").innerHTML = `<div class="doors">${doorHtml}</div>
+    <div class="grid g2 mt">
+      <div class="panel"><div class="panel-head"><div><h2>Yard</h2><p class="sub">${pl(transit.length, "truck")} on the way · ${pl(free, "free door")}</p></div></div>
+        ${transit.length ? `<ul class="list">${transit.map(t => `<li class="row"><div class="grow"><div class="title">${t.id} <span class="muted" style="font-weight:400">· ${esc(t.origin)}</span></div><div class="meta">${pl(t.box_ids.length, "box", "boxes")} · ${pl(truckItemCount(t), "item")} · arriving in ${t.eta_minutes} min</div></div><button class="btn sm" data-act="checkin" data-id="${t.id}" ${free ? "" : "disabled"}>Check in</button></li>`).join("")}</ul>`
+          : `<div class="empty">The yard is empty. Schedule an inbound truck.</div>`}
+      </div>
+      <div class="panel"><div class="panel-head"><div><h2>Staging</h2><p class="sub">${pl(staged.length, "box", "boxes")} waiting to go to a process station</p></div>${staged.length ? `<button class="btn sm" data-act="distributeAll">Distribute all</button>` : ""}</div>
+        ${staged.length ? `<ul class="list">${staged.map(b => `<li class="row"><div class="grow"><div class="title">${b.id}</div><div class="meta">${esc(b.origin)} · ${b.item_ids.length} items</div></div>
+          <div class="station-pick"><span>Station</span>${Array.from({ length: S.config.stations }, (_, k) => `<button data-act="distribute" data-id="${b.id}" data-station="${k + 1}" aria-label="Send ${b.id} to station ${k + 1}">${k + 1}</button>`).join("")}</div></li>`).join("")}</ul>`
+          : `<div class="empty">No boxes in staging. Unload a truck at a door.</div>`}
+      </div>
+    </div>
+    ${unloaded.length ? `<div class="panel mt"><div class="panel-head"><div><h2>Unloaded this shift</h2></div></div><div class="table-wrap"><table><thead><tr><th>Truck</th><th>From</th><th class="num">Boxes</th><th class="num">Items</th><th class="num">Unloaded</th></tr></thead><tbody>
+      ${unloaded.map(t => `<tr><td class="id">${t.id}</td><td>${esc(t.origin)}</td><td class="num">${t.box_ids.length}</td><td class="num">${truckItemCount(t)}</td><td class="num muted">${fmtTime(t.unloaded_at)}</td></tr>`).join("")}</tbody></table></div></div>` : ""}`;
+}
+
+/* ===== Process ===== */
+function renderProcess() {
+  const n = S.config.stations, cap = S.config.tote_capacity;
+  const tote = by.totes[S.open_tote], pallet = by.pallets[S.open_pallet];
+  const fullTotes = S.totes.filter(t => t.status === "full");
+  const stations = Array.from({ length: n }, (_, k) => {
+    const st = k + 1;
+    const open = S.boxes.find(b => b.status === "open" && b.station === st);
+    const queue = S.boxes.filter(b => b.status === "at_station" && b.station === st);
+    let inner;
+    if (open) {
+      const items = boxItems(open), done = items.filter(i => i.status !== "in_box").length;
+      inner = `<div class="st-box">${open.id} · ${esc(open.origin)}</div>
+        <div class="progress-line"><span>${done} of ${items.length} items checked</span><span>${queue.length} ${queue.length === 1 ? "box" : "boxes"} queued</span></div>
+        <div class="meter"><i style="width:${done / items.length * 100}%;background:#34d27b"></i></div>
+        <ul class="items">${items.map(i => `<li class="item ${i.status !== "in_box" ? "routed" : ""}"><div class="i-top"><div><div class="i-name">${esc(i.name)}</div><div class="i-note">${esc(i.note)}</div></div>
+          ${i.status === "in_box" ? `<span class="chip ${i.condition}">${i.condition === "clean" ? "Clean" : "Damaged"}</span>` : `<span class="chip done">${i.status === "yellow_tote" ? "In yellow tote" : "To liquidation"}</span>`}</div>
+          <div class="i-acts"><button class="btn sm yellow" data-act="tote" data-id="${i.id}">Yellow tote</button><button class="btn sm rose" data-act="liq" data-id="${i.id}">Liquidation</button></div></li>`).join("")}</ul>`;
+    } else if (queue.length) {
+      inner = `<div class="st-box">${queue.length} ${queue.length === 1 ? "box" : "boxes"} waiting</div><button class="btn" data-act="open" data-id="${queue[0].id}">Open ${queue[0].id}</button>`;
+    } else {
+      inner = `<div class="empty">No boxes here.<a href="#unload">Send boxes from Unload ›</a></div>`;
+    }
+    return `<div class="station ${open ? "active" : ""}"><div class="st-head"><h3>Station ${st}</h3>${open ? `<span class="chip clean">Box open</span>` : queue.length ? `<span class="chip transit">Ready</span>` : `<span class="chip done">Idle</span>`}</div>${inner}</div>`;
+  }).join("");
+  const filled = tote.item_ids.length;
+  const slots = Array.from({ length: cap }, (_, k) => `<i class="${k < filled ? "on" : ""} ${k === filled - 1 && filled > ui.lastToteCount ? "pop" : ""}"></i>`).join("");
+  ui.lastToteCount = filled;
+  $("process-body").innerHTML = `<div class="grid g-main"><div class="stations">${stations}</div>
+    <div class="stack">
+      <div class="panel"><div class="panel-head"><div><h2>Yellow tote ${tote.id}</h2><p class="sub">Clean, sellable items. Closes at ${cap}.</p></div><span class="big">${filled}<span class="muted" style="font-size:18px">/${cap}</span></span></div>
+        <div class="tote-vis" aria-label="${filled} of ${cap} slots filled">${slots}</div>
+        <div class="actions" style="justify-content:space-between"><button class="btn sm ghost" data-act="closeTote" ${filled ? "" : "disabled"}>Close tote early</button><a class="more" href="#tranship">${fullTotes.length} full ${fullTotes.length === 1 ? "tote" : "totes"} in tranship</a></div>
+      </div>
+      <div class="panel"><div class="panel-head"><div><h2>Liquidation pallet ${pallet.id}</h2><p class="sub">Damaged items</p></div><span class="big">${pallet.item_ids.length}</span></div>
+        <a class="more" href="#liquidation">Go to liquidation</a></div>
+      <div class="panel"><div class="panel-head"><div><h2>How to decide</h2></div></div>
+        <ul class="list"><li class="row"><span class="chip clean">Clean</span><span class="muted" style="font-size:13px;text-align:right">Yellow tote → tranship → sold</span></li><li class="row"><span class="chip damaged">Damaged</span><span class="muted" style="font-size:13px;text-align:right">Liquidation pallet → liquidated</span></li></ul></div>
+    </div></div>`;
+}
+
+/* ===== Tranship ===== */
+function renderTranship() {
+  const full = S.totes.filter(t => t.status === "full"), out = by.outbound[S.open_outbound], cap = S.config.outbound_capacity;
+  const loaded = out.tote_ids.length, units = totalUnits(itemsInTotes(out.tote_ids));
+  const shipped = S.outbound.filter(o => o.status === "shipped").reverse();
+  $("tranship-body").innerHTML = `<div class="grid g-main">
+    <div class="panel"><div class="panel-head"><div><h2>Staged totes</h2><p class="sub">${pl(full.length, "full yellow tote")} · ${pl(totalUnits(full), "unit")} waiting to load</p></div></div>
+      ${full.length ? `<div class="totes">${full.map(t => `<div class="tote-card"><span class="t-id">${t.id}</span><span class="t-meta">${pl(t.item_ids.length, "unit")}</span><button class="btn sm yellow" data-act="load" data-id="${t.id}" ${loaded >= cap ? "disabled" : ""}>Load</button></div>`).join("")}</div>`
+        : `<div class="empty">No full totes yet. Totes arrive here when they fill up in Process.<a href="#process">Go to Process ›</a></div>`}
+    </div>
+    <div class="panel"><div class="panel-head"><div><h2>Outbound ${out.id}</h2><p class="sub">To ${esc(out.destination)}</p></div><span class="big">${loaded}<span class="muted" style="font-size:18px">/${cap}</span></span></div>
+      <div class="truck-wrap"><div class="trailer">${Array.from({ length: cap }, (_, k) => `<i class="${k < loaded ? "on" : ""}"></i>`).join("")}</div><div class="cab"></div></div>
+      <p class="muted" style="font-size:13px;margin:10px 0 14px">${loaded} totes · ${units} units loaded</p>
+      <button class="btn" style="width:100%" data-act="ship" ${loaded ? "" : "disabled"}>Ship to be sold</button>
+    </div></div>
+    <div class="panel mt"><div class="panel-head"><div><h2>Shipped this shift</h2><p class="sub">${S.summary.units_shipped} units sent to be sold</p></div></div>
+      ${shipped.length ? `<div class="table-wrap"><table><thead><tr><th>Truck</th><th>Destination</th><th class="num">Totes</th><th class="num">Units</th><th class="num">Shipped</th></tr></thead><tbody>
+        ${shipped.map(o => `<tr><td class="id">${o.id}</td><td>${esc(o.destination)}</td><td class="num">${o.tote_ids.length}</td><td class="num">${totalUnits(itemsInTotes(o.tote_ids))}</td><td class="num muted">${fmtTime(o.shipped_at)}</td></tr>`).join("")}</tbody></table></div>`
+        : `<div class="empty">No trucks shipped yet.</div>`}
+    </div>`;
+}
+
+/* ===== Liquidation ===== */
+function renderLiquidation() {
+  const pallet = by.pallets[S.open_pallet], items = itemsIn(pallet.item_ids);
+  const all = S.items.filter(i => i.status === "liquidation");
+  const reasons = Object.entries(all.reduce((m, i) => { const r = i.condition === "damaged" ? i.note : "Clean, sent by choice"; m[r] = (m[r] || 0) + 1; return m; }, {})).sort((a, b) => b[1] - a[1]);
+  const max = reasons.length ? reasons[0][1] : 1;
+  const shipped = S.pallets.filter(p => p.status === "shipped").reverse();
+  $("liq-body").innerHTML = `<div class="grid g-main">
+    <div class="panel"><div class="panel-head"><div><h2>Pallet ${pallet.id}</h2><p class="sub">Going to ${esc(pallet.partner)}</p></div><span class="big">${items.length}</span></div>
+      ${items.length ? `<div class="table-wrap"><table><thead><tr><th>Item</th><th>Reason</th><th>From box</th></tr></thead><tbody>${items.slice().reverse().map(i => `<tr><td>${esc(i.name)}</td><td>${i.condition === "damaged" ? `<span class="chip damaged">${esc(i.note)}</span>` : `<span class="chip done">Clean, sent by choice</span>`}</td><td class="muted mono">${i.box_id}</td></tr>`).join("")}</tbody></table></div>`
+        : `<div class="empty">The pallet is empty. Damaged items land here from Process.<a href="#process">Go to Process ›</a></div>`}
+    </div>
+    <div class="panel"><div class="panel-head"><div><h2>Why items were liquidated</h2><p class="sub">All liquidation items this shift</p></div></div>
+      ${reasons.length ? `<ul class="ranked">${reasons.map(([r, n]) => `<li><div class="r-top"><span>${esc(r)}</span><b>${n}</b></div><div class="r-bar"><i style="width:${n / max * 100}%;background:#e85a73"></i></div></li>`).join("")}</ul>` : `<div class="empty">No liquidation yet.</div>`}
+    </div></div>
+    <div class="panel mt"><div class="panel-head"><div><h2>Sent to liquidation</h2><p class="sub">${S.summary.units_liquidated} units this shift</p></div></div>
+      ${shipped.length ? `<div class="table-wrap"><table><thead><tr><th>Pallet</th><th>Partner</th><th class="num">Units</th><th class="num">Sent</th></tr></thead><tbody>${shipped.map(p => `<tr><td class="id">${p.id}</td><td>${esc(p.partner)}</td><td class="num">${p.item_ids.length}</td><td class="num muted">${fmtTime(p.shipped_at)}</td></tr>`).join("")}</tbody></table></div>`
+        : `<div class="empty">No pallets sent yet.</div>`}
+    </div>`;
+}
+
+/* ===== Activity ===== */
+let feedFreshFrom = 0;
+function renderActivity() {
+  const evs = S.events.slice().reverse().filter(e => actFilter === "all" || e.area === actFilter);
+  const xpTotal = S.player.xp, last = S.events[S.events.length - 1];
+  const counts = a => S.events.filter(e => e.area === a).length;
+  $("act-body").innerHTML = `<div class="stats">
+      <div class="stat"><div>${S.events.length}</div><span>Events this shift</span></div>
+      <div class="stat"><div style="color:var(--yellow)">${xpTotal}</div><span>XP earned</span></div>
+      <div class="stat"><div>${S.summary.units_shipped}</div><span>Units shipped to be sold</span></div>
+      <div class="stat"><div>${last ? fmtTime(last.at) : "—"}</div><span>Last update</span></div>
+    </div>
+    <div class="filters" role="group" aria-label="Filter activity">${[["all", "All", S.events.length], ["unload", "Unload", counts("unload")], ["process", "Process", counts("process")], ["tranship", "Tranship", counts("tranship")], ["liquidation", "Liquidation", counts("liquidation")]]
+      .map(([k, l, n]) => `<button data-filter="${k}" aria-pressed="${actFilter === k}">${l} · ${n}</button>`).join("")}</div>
+    <div class="panel"><ul class="feed">${feedHtml(evs, feedFreshFrom)}</ul></div>`;
+  feedFreshFrom = lastEventId();
+}
+document.addEventListener("click", e => { const f = e.target.closest("[data-filter]"); if (f) { actFilter = f.dataset.filter; renderActivity(); } });
+
+/* ---------- feedback ---------- */
+let toastTimer;
+function toast(msg, error) { const t = $("toast"); t.textContent = msg; t.classList.toggle("error", !!error); t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), error ? 4200 : 2800); }
+function xpPop(n) { const el = document.createElement("div"); el.className = "xp-pop"; el.textContent = `+${n} XP`; document.body.appendChild(el); setTimeout(() => el.remove(), 1700); }
+function levelUp(lv) {
+  $("lu-num").textContent = "Level " + lv.number;
+  $("lu-text").textContent = `You’re a ${lv.name} now.` + (lv.next_name ? ` Next stop: ${lv.next_name}.` : " You’ve reached the top. Bring the thunder.");
+  setTimeout(() => $("levelup").showModal(), 400);
+}
+function tip(html, ev) { const t = $("tip"); t.innerHTML = html; t.classList.add("show"); t.style.left = Math.min(innerWidth - t.offsetWidth - 12, ev.clientX + 14) + "px"; t.style.top = Math.max(12, ev.clientY - t.offsetHeight - 12) + "px"; }
+function untip() { $("tip").classList.remove("show"); }
+
+/* ---------- mobile menu ---------- */
+function closeMenu() { $("sidebar").classList.remove("open"); $("scrim").classList.remove("show"); }
+$("menu-btn").addEventListener("click", () => { $("sidebar").classList.add("open"); $("scrim").classList.add("show"); });
+$("scrim").addEventListener("click", closeMenu);
+
+/* ---------- storm over the welcome ---------- */
+(() => {
+  const host = $("welcome"), cvs = $("storm"), ctx = cvs.getContext("2d"), flashEl = $("flash");
+  let W = 0, H = 0, drops = [], bolts = [], next = performance.now() + 1500;
+  function size() { const dpr = Math.min(2, devicePixelRatio || 1); W = host.clientWidth; H = host.clientHeight; cvs.width = W * dpr; cvs.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); drops = Array.from({ length: Math.round(W / 10) }, () => ({ x: Math.random() * W, y: Math.random() * H, l: 10 + Math.random() * 16, v: 8 + Math.random() * 7 })); }
+  function bolt(x0) {
+    const pts = [[x0, -10]]; let x = x0, y = -10; const end = H * (.45 + Math.random() * .35);
+    while (y < end) { y += 14 + Math.random() * 24; x += (Math.random() - .5) * 44; pts.push([x, y]); }
+    const br = []; for (let i = 2; i < pts.length - 2; i++) if (Math.random() < .25) { const b = [pts[i]]; let [bx, by2] = pts[i]; const d = Math.random() < .5 ? -1 : 1; for (let k = 0; k < 3 + Math.random() * 3; k++) { by2 += 12 + Math.random() * 16; bx += d * (8 + Math.random() * 20); b.push([bx, by2]); } br.push(b); }
+    return { pts, br, born: performance.now() };
+  }
+  window.strike = big => {
+    if (reduceMotion || current !== "dashboard" || !W) return;
+    const x = W * (.12 + Math.random() * .76); bolts.push(bolt(x)); if (big) bolts.push(bolt(W * (.15 + Math.random() * .7)));
+    flashEl.style.setProperty("--fx", x / W * 100 + "%"); flashEl.classList.remove("on"); void flashEl.offsetWidth; flashEl.classList.add("on");
+    host.classList.add("striking"); setTimeout(() => host.classList.remove("striking"), 700);
+    next = performance.now() + 4000 + Math.random() * 5000;
+  };
+  const line = p => { ctx.beginPath(); ctx.moveTo(p[0][0], p[0][1]); p.slice(1).forEach(q => ctx.lineTo(q[0], q[1])); ctx.stroke(); };
+  function frame(t) {
+    requestAnimationFrame(frame);
+    if (current !== "dashboard") return;
+    if (host.clientWidth !== W || host.clientHeight !== H) size();
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = "rgba(170,190,255,.2)"; ctx.lineWidth = 1; ctx.beginPath();
+    for (const d of drops) { ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.l * .18, d.y + d.l); d.y += d.v; d.x -= d.v * .18; if (d.y > H) { d.y = -20; d.x = Math.random() * (W + 60); } }
+    ctx.stroke();
+    bolts = bolts.filter(b => t - b.born < 650);
+    for (const b of bolts) {
+      const age = (t - b.born) / 650, a = (1 - age) * (age < .15 || (age > .25 && age < .4) ? 1 : .45);
+      ctx.save(); ctx.shadowColor = "rgba(160,190,255,.9)"; ctx.shadowBlur = 20; ctx.lineJoin = "round";
+      ctx.strokeStyle = `rgba(235,242,255,${a})`; ctx.lineWidth = 2.2; line(b.pts); ctx.lineWidth = 1; b.br.forEach(line); ctx.restore();
+    }
+    if (t > next) window.strike();
+  }
+  if (!reduceMotion) requestAnimationFrame(frame);
+})();
+
+/* ---------- live refresh: pick up changes made elsewhere ---------- */
+setInterval(async () => {
+  if (document.hidden || busy || !S) return;
+  try { const next = await api("/api/state"); if ((next.events.at(-1) || {}).id !== lastEventId()) applyState(next, false); } catch (_) {}
+}, 5000);
+let rsz; addEventListener("resize", () => { clearTimeout(rsz); rsz = setTimeout(() => S && render(), 150); });
+
+/* ---------- boot ---------- */
+(async () => {
+  route();
+  try { applyState(await api("/api/state"), false); }
+  catch (err) { toast("Couldn’t reach the StockFlow server. Is it running?", true); }
+})();
+</script>
+</body>
+</html>

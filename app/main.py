@@ -1,177 +1,142 @@
-from datetime import datetime, timezone
+"""StockFlow API: the IND8 returns floor over HTTP.
+
+Every action returns the full floor snapshot, so the UI always renders
+from one consistent, server-owned state.
+"""
+
 from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
+from app.warehouse import DomainError, Warehouse
 
 app = FastAPI(
     title="StockFlow API",
-    description="A learning project for returns-center inventory and order management.",
-    version="0.2.0",
+    description="IND8 returns floor: unload, process, tranship and liquidation.",
+    version="0.4.0",
 )
 
-Condition = Literal["new", "used_like_new", "used", "damaged"]
-Disposition = Literal["pending_inspection", "restock", "repair", "liquidate", "discard"]
+warehouse = Warehouse.seeded()
 
 
-class ReturnItemCreate(BaseModel):
-    product_name: str = Field(min_length=1, max_length=120)
-    condition: Condition
-    quantity: int = Field(default=1, ge=1, le=1000)
+class DistributeRequest(BaseModel):
+    station: int
 
 
-class ReturnItem(BaseModel):
-    id: int
-    product_name: str
-    condition: Condition
-    disposition: Disposition = "pending_inspection"
-    quantity: int
+class RouteRequest(BaseModel):
+    destination: Literal["yellow_tote", "liquidation"]
 
 
-class DispositionDecision(BaseModel):
-    disposition: Literal["restock", "repair", "liquidate", "discard"]
-    reason: str = Field(min_length=3, max_length=300)
-
-
-class AuditEvent(BaseModel):
-    event_id: int
-    return_id: int
-    event_type: str
-    details: str
-    created_at: str
-
-
-# In-memory storage for the first milestone. Data resets when the server restarts.
-# PostgreSQL persistence is a planned next step.
-returns: dict[int, ReturnItem] = {
-    1: ReturnItem(
-        id=1,
-        product_name="Wireless Mouse",
-        condition="new",
-        disposition="pending_inspection",
-        quantity=2,
-    )
-}
-sellable_inventory: dict[str, int] = {}
-audit_events: list[AuditEvent] = []
-next_return_id = 2
-next_event_id = 1
-
-
-def record_audit_event(return_id: int, event_type: str, details: str) -> None:
-    global next_event_id
-    audit_events.append(
-        AuditEvent(
-            event_id=next_event_id,
-            return_id=return_id,
-            event_type=event_type,
-            details=details,
-            created_at=datetime.now(timezone.utc).isoformat(),
-        )
-    )
-    next_event_id += 1
+def act(action) -> dict:
+    """Run a floor action and return the new snapshot, mapping rule violations to HTTP errors."""
+    try:
+        action()
+    except DomainError as error:
+        raise HTTPException(status_code=error.status, detail=error.message) from error
+    return warehouse.snapshot()
 
 
 @app.get("/")
 def read_root() -> dict[str, str]:
     """Confirm the API is running."""
-    return {"message": "Welcome to StockFlow API", "docs": "/docs"}
-
-
-@app.get("/dashboard", include_in_schema=False)
-def dashboard() -> FileResponse:
-    """Serve the StockFlow operations dashboard."""
-    return FileResponse(Path(__file__).parent / "static" / "dashboard.html")
-
-
-@app.get("/simulation", include_in_schema=False)
-def simulation() -> FileResponse:
-    """Serve the interactive returns workflow training simulator."""
-    return FileResponse(Path(__file__).parent / "static" / "simulation.html")
+    return {"message": "Welcome to StockFlow API", "docs": "/docs", "app": "/dashboard"}
 
 
 @app.get("/health")
 def health_check() -> dict[str, str]:
-    """Simple health endpoint for local checks and future deployment."""
     return {"status": "ok"}
 
 
-@app.get("/returns", response_model=list[ReturnItem])
-def list_returns() -> list[ReturnItem]:
-    """List returned items awaiting or completing inspection."""
-    return list(returns.values())
+@app.get("/dashboard", include_in_schema=False)
+def dashboard() -> FileResponse:
+    """Serve the IND8 floor app (single page with its own navigation)."""
+    return FileResponse(Path(__file__).parent / "static" / "dashboard.html")
 
 
-@app.post("/returns", response_model=ReturnItem, status_code=201)
-def create_return(payload: ReturnItemCreate) -> ReturnItem:
-    """Record a returned item; it is never sellable before a decision."""
-    global next_return_id
-    item = ReturnItem(
-        id=next_return_id,
-        product_name=payload.product_name,
-        condition=payload.condition,
-        disposition="pending_inspection",
-        quantity=payload.quantity,
-    )
-    returns[item.id] = item
-    record_audit_event(item.id, "return_received", f"Received {item.quantity} x {item.product_name}")
-    next_return_id += 1
-    return item
+# ---------- read ----------
+@app.get("/api/state")
+def get_state() -> dict:
+    """The whole floor: trucks, boxes, items, totes, outbound, pallets, events, summary and XP."""
+    return warehouse.snapshot()
 
 
-@app.get("/returns/{return_id}", response_model=ReturnItem)
-def get_return(return_id: int) -> ReturnItem:
-    """Fetch one returned item by its ID."""
-    item = returns.get(return_id)
-    if item is None:
-        raise HTTPException(status_code=404, detail="Return item not found")
-    return item
+@app.get("/api/events")
+def get_events(after: int = 0) -> list[dict]:
+    """Events newer than `after`, oldest first, for live activity feeds."""
+    return [e for e in warehouse.snapshot()["events"] if e["id"] > after]
 
 
-@app.post("/returns/{return_id}/disposition", response_model=ReturnItem)
-def decide_disposition(return_id: int, decision: DispositionDecision) -> ReturnItem:
-    """Record an inspection decision; only restock decisions increase sellable stock."""
-    item = returns.get(return_id)
-    if item is None:
-        raise HTTPException(status_code=404, detail="Return item not found")
-    if item.disposition != "pending_inspection":
-        raise HTTPException(
-            status_code=409,
-            detail="A disposition has already been recorded for this return",
-        )
-    if decision.disposition == "restock" and item.condition == "damaged":
-        raise HTTPException(
-            status_code=422,
-            detail="Damaged items cannot be restocked; choose another disposition",
-        )
-
-    updated_item = item.model_copy(update={"disposition": decision.disposition})
-    returns[return_id] = updated_item
-
-    if decision.disposition == "restock":
-        sellable_inventory[item.product_name] = (
-            sellable_inventory.get(item.product_name, 0) + item.quantity
-        )
-
-    record_audit_event(
-        return_id,
-        "disposition_decided",
-        f"Disposition={decision.disposition}; reason={decision.reason}; quantity={item.quantity}",
-    )
-    return updated_item
+# ---------- unload ----------
+@app.post("/api/trucks")
+def schedule_truck() -> dict:
+    return act(warehouse.schedule_truck)
 
 
-@app.get("/inventory")
-def get_inventory() -> dict[str, dict[str, int]]:
-    """Show sellable inventory only; items pending inspection are excluded."""
-    return {
-        "sellable_stock": dict(sorted(sellable_inventory.items())),
-    }
+@app.post("/api/trucks/{truck_id}/check-in")
+def check_in(truck_id: str) -> dict:
+    return act(lambda: warehouse.check_in(truck_id))
 
 
-@app.get("/audit-logs", response_model=list[AuditEvent])
-def get_audit_logs() -> list[AuditEvent]:
-    """List recorded return and disposition events in creation order."""
-    return list(audit_events)
+@app.post("/api/trucks/{truck_id}/unload")
+def unload(truck_id: str) -> dict:
+    return act(lambda: warehouse.unload(truck_id))
+
+
+@app.post("/api/boxes/distribute-all")
+def distribute_all() -> dict:
+    return act(warehouse.distribute_all)
+
+
+@app.post("/api/boxes/{box_id}/distribute")
+def distribute(box_id: str, body: DistributeRequest) -> dict:
+    return act(lambda: warehouse.distribute(box_id, body.station))
+
+
+# ---------- process ----------
+@app.post("/api/boxes/{box_id}/open")
+def open_box(box_id: str) -> dict:
+    return act(lambda: warehouse.open_box(box_id))
+
+
+@app.post("/api/items/{item_id}/route")
+def route_item(item_id: str, body: RouteRequest) -> dict:
+    return act(lambda: warehouse.route_item(item_id, body.destination))
+
+
+@app.post("/api/totes/close")
+def close_tote() -> dict:
+    return act(warehouse.close_tote)
+
+
+# ---------- tranship ----------
+@app.post("/api/totes/load-all")
+def load_all_totes() -> dict:
+    return act(warehouse.load_all_totes)
+
+
+@app.post("/api/totes/{tote_id}/load")
+def load_tote(tote_id: str) -> dict:
+    return act(lambda: warehouse.load_tote(tote_id))
+
+
+@app.post("/api/outbound/ship")
+def ship_outbound() -> dict:
+    return act(warehouse.ship_outbound)
+
+
+# ---------- liquidation ----------
+@app.post("/api/liquidation/ship")
+def ship_liquidation() -> dict:
+    return act(warehouse.ship_liquidation)
+
+
+# ---------- demo ----------
+@app.post("/api/reset")
+def reset() -> dict:
+    """Start a fresh shift with new sample trucks."""
+    global warehouse
+    warehouse = Warehouse.seeded()
+    return warehouse.snapshot()

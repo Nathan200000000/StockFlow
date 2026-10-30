@@ -86,6 +86,12 @@ def dashboard() -> FileResponse:
     return FileResponse(Path(__file__).parent / "static" / "dashboard.html")
 
 
+@app.get("/simulation", include_in_schema=False)
+def simulation() -> FileResponse:
+    """Serve the interactive returns workflow training simulator."""
+    return FileResponse(Path(__file__).parent / "static" / "simulation.html")
+
+
 @app.get("/health")
 def health_check() -> dict[str, str]:
     """Simple health endpoint for local checks and future deployment."""
